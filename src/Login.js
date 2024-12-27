@@ -8,6 +8,8 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Login({ navigation }) {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -21,7 +23,6 @@ export default function Login({ navigation }) {
   };
 
   const handleSubmit = async () => {
-    // Basic validation
     let newErrors = { email: '', password: '' };
     if (!formData.email) newErrors.email = 'Email is required';
     if (!formData.password) newErrors.password = 'Password is required';
@@ -32,33 +33,35 @@ export default function Login({ navigation }) {
     }
 
     try {
-      // Replace with your API endpoint
-      const response = await fetch('https://your-api-endpoint.com/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to login');
-      }
-
-      const data = await response.json();
-      Alert.alert('Login Successful', `Welcome back, ${data.user.name}!`);
-
-      // Navigate to Home screen on successful login
+      async function getDeviceIP() {
+        try {
+            const response = await axios.get('http://api.ipify.org?format=json');
+            return response.data.ip; // Returns the public IP of your device
+        } catch (error) {
+            console.error('Error fetching IP:', error);
+        }
+    }
+    // const ip = await getDeviceIP();
+    const ip='192.168.1.5'
+     
       
-      
-    } catch (error) {
-      console.log(navigator);
-      
+      const response = await axios.post(`http://${ip}:5000/api/Login`, formData);
+    
+
+     
+
+      const { token, message } = response.data;
+      Alert.alert('Login Successful', message);
+
+      await AsyncStorage.setItem('authToken', token);
       navigation.navigate('Home');
-      Alert.alert('Login Failed', error.message);
+    } catch (error) {
+      console.error('Login error:', error.response?.data || error.message);
+      
+      const errorMessage = error.response?.data?.error || 'Failed to login';
+      Alert.alert('Login Failed', errorMessage);
     }
   };
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
@@ -87,6 +90,10 @@ export default function Login({ navigation }) {
         
         <TouchableOpacity>
           <Text style={styles.link}>Forgot Password?</Text>
+        </TouchableOpacity>
+          {/* Registration Link */}
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+          <Text style={styles.link}>Don't have an account? Register here</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -134,7 +141,9 @@ const styles = StyleSheet.create({
      fontSize:12
    },
    link:{
-     color:'#3B82F6',
-     marginTop :10
+    color: '#4F83CC',
+    textAlign: 'center',
+    marginTop: 15,
+    textDecorationLine: 'underline',
    }
 });

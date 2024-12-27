@@ -1,0 +1,4 @@
+  const testUser = {
+    email: 'test@example.com', // Test email
+    password: 'testpassword', // Test password
+  };
