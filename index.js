@@ -4,8 +4,10 @@ import { registerRootComponent } from 'expo';
 import App from './App';
 
 
+
 // Import the global.css file in the index.js file:
 import './global.css';
+
 
 
 

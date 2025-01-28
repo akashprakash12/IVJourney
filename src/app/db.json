@@ -1,0 +1,37 @@
+{
+    "packages": [
+      {
+        "id": 1,
+        "name": "Manali",
+        "description": "Places to visit: Shimla, Manali, Kufri, Solang Valley, Kasol, Manikaran and Chandigarh",
+        "duration": "07 Nights/07 Days",
+        "price": 21000,
+        "rating": 4
+      },
+      {
+        "id": 2,
+        "name": "Goa",
+        "description": "Places to visit: Baga Beach, Anjuna Beach, Calangute, Dudhsagar Waterfalls, Panjim",
+        "duration": "05 Nights/06 Days",
+        "price": 18000,
+        "rating": 5
+      },
+      {
+        "id": 3,
+        "name": "Leh Ladakh",
+        "description": "Places to visit: Pangong Lake, Nubra Valley, Khardung La Pass, Magnetic Hill",
+        "duration": "06 Nights/07 Days",
+        "price": 32000,
+        "rating": 5
+      },
+      {
+        "id": 4,
+        "name": "Kerala",
+        "description": "Places to visit: Munnar, Alleppey, Kochi, Thekkady, Wayanad",
+        "duration": "05 Nights/06 Days",
+        "price": 25000,
+        "rating": 4
+      }
+    ]
+  }
+  
