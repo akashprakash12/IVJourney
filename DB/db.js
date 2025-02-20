@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 // require('dotenv').config({ path: '../.env' }); // Load environment variables
 require('dotenv').config(); // Automatically loads from the root directory
+import process from "node:process";
 
 const uri = process.env.MONGODB_URI;
 // const uri="mongodb+srv://akash:eq8LpDlTm4LNxeu0@cluster0.yvwv9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
