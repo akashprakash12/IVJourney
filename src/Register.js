@@ -41,7 +41,7 @@ export default function Register({ navigation }) {
     
     
     try {
-      const ip = "192.168.1.5";
+      const ip = "192.168.1.6";
       const response = await axios.post(
         `http://${ip}:5000/api/register`,
         userData
@@ -53,7 +53,7 @@ export default function Register({ navigation }) {
       Alert.alert("Registration Successful", response.data.message);
 
       // Navigate to login or home screen after successful registration
-      // navigation.navigate("Login");
+      navigation.navigate("Login");
       
       
     } catch (error) {
@@ -66,42 +66,6 @@ export default function Register({ navigation }) {
   }
   
 
-  const handleChange = (name, value) => {
-    setFormData({ ...formData, [name]: value });
-    if (value) {
-      setErrors({ ...errors, [name]: "" });
-    }
-  };
-
-  // const handleSubmit = async () => {
-  //   let newErrors = { email: "", password: "" };
-
-  //   if (!formData.email) newErrors.email = "Email is required";
-  //   if (!formData.password) newErrors.password = "Password is required";
-
-  //   if (newErrors.email || newErrors.password) {
-  //     setErrors(newErrors);
-  //     return;
-  //   }
-
-  //   try {
-  //     const ip = "192.168.1.33";
-  //     const response = await axios.post(
-  //       `http://${ip}:5000/api/register`,
-  //       formData
-  //     );
-
-  //     Alert.alert("Registration Successful", response.data.message);
-
-  //     // Navigate to login or home screen after successful registration
-  //     navigation.navigate("Login");
-  //   } catch (error) {
-  //     //   console.error('Registration error:', error.response?.data || error.message);
-
-  //     //   const errorMessage = error.response?.data?.error || 'Failed to register';
-  //     Alert.alert("Registration Failed", errorMessage);
-  //   }
-  // };
 
   return (
     <ScrollView>
@@ -212,7 +176,7 @@ export default function Register({ navigation }) {
         <TouchableOpacity className="mt-6 items-center mb-8">
           <Text className="text-gray-400">
             Already have an account?{" "}
-            <Text className="text-primary_1">Login</Text>
+            <Text className="text-primary_1" onPress={() => navigation.navigate("Login")}>Login</Text>
           </Text>
         </TouchableOpacity>
       </SafeAreaView>

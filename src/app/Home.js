@@ -1,121 +1,115 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  SafeAreaView,
-  ActivityIndicator,
+import React, { useContext, useEffect, useState } from "react";
+import { 
+  View, Text, FlatList, TouchableOpacity, TextInput, SafeAreaView, 
+  ActivityIndicator, Pressable, Image 
 } from "react-native";
-import Entypo from "@expo/vector-icons/Entypo";
+import { ThemeContext } from "../../context/ThemeContext";
 import axios from "axios";
-
-function Package({ name, description, duration, price, rating }) {
-  return (
-    <View className="bg-primary rounded-lg p-4 mb-4">
-      <Text className="text-white text-lg font-bold">{name}</Text>
-      <Text className="text-gray-300 mb-2">{description}</Text>
-      <Text className="text-yellow-400 mb-2">{duration}</Text>
-      <Text className="text-yellow-400 text-lg font-bold">{price}₹</Text>
-      <View className="flex-row">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <Text
-            key={index}
-            className={index < rating ? "text-yellow-400" : "text-gray-300"}
-          >
-            {index < rating ? "⭐" : "☆"}
-          </Text>
-        ))}
-      </View>
-    </View>
-  );
-}
+import { useNavigation } from "@react-navigation/native";
 
 export default function HomeScreen() {
- 
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [packages, setPackages] = useState([]);
-
-  const fetchPackages = async () => {
-    try {
-      const response = await axios.get(
-        "https://raw.githubusercontent.com/akashprakash12/TestAPI/refs/heads/main/db.json"
-      );
   
-      // Check the structure of the response data
-      console.log("API Response Data:", response.data);
-  
-      // Ensure the data is an array
-      if (Array.isArray(response.data)) {
-        setPackages(response.data); // Directly set the array
-      } else {
-        console.error("Unexpected data format. Expected an array:", response.data);
-      }
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error fetching packages:", error);
-      setIsLoading(false);
-    }
-  };
-  
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  const isDark = theme === "dark";
 
   useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const ip = "192.168.1.53";
+        const response = await axios.get(`http://${ip}:5000/api/packages`);
+  
+        if (Array.isArray(response.data)) {
+          setPackages(response.data.map(pkg => ({
+            id: pkg._id?.$oid || Math.random().toString(36).substr(2, 9),
+            name: pkg.packageName,
+            description: pkg.description || "No description available",
+            duration: pkg.duration || "N/A",
+            price: pkg.price || 0,
+            rating: pkg.rating || 0,
+            activities: pkg.activities || [],
+            inclusions: pkg.inclusions || "Not specified",
+            instructions: pkg.instructions || "No instructions available",
+            image: pkg.image ? `data:image/jpeg;base64,${pkg.image}` : "https://via.placeholder.com/150",
+          })));
+        }
+      } catch (error) {
+        console.error("Error fetching packages:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchPackages();
   }, []);
-  const filteredPackages = Array.isArray(packages)
-  ? packages.filter((pkg) =>
-      pkg.name.toLowerCase().includes(search.toLowerCase())
-    )
-  : [];
 
+  const filteredPackages = packages.filter(pkg =>
+    pkg.name?.toLowerCase().includes(search.toLowerCase())
+  );
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#6200ee" />
+      <View className="flex-1 justify-center items-center bg-dark">
+        <ActivityIndicator size="large" color="#F22E63" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-secondary px-6">
-      <View className="flex-1 bg-secondary p-4">
-        <Text className="text-white text-xl mb-4 mt-5">Welcome</Text>
-        <TextInput
-          placeholder="Search for packages"
-          placeholderTextColor="#aaa"
-          value={search}
-          onChangeText={setSearch}
-          className="bg-secondary_2 text-white p-4 bg-transparent border rounded-full mb-3  border-primary_1 mt-5"
-        />
-        <View className="flex-row justify-between mb-4 mt-3">
-          <TouchableOpacity
-            onPress={() => setSearch("")}
-            className="flex-row bg-primary py-2 px-4 rounded"
-          >
-            <Entypo name="cross" size={20} color="white" />
-            <Text className="text-white ml-2">Clear</Text>
-          </TouchableOpacity>
-        </View>
-
-        <FlatList
-          data={filteredPackages}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <Package
-              name={item.name}
-              description={item.description}
-              duration={item.duration}
-              price={item.price}
-              rating={item.rating}
-            />
-          )}
-          contentContainerStyle={{ paddingBottom: 16 }}
-        />
-      
+    <SafeAreaView className={`flex-1 px-6 ${isDark ? "bg-dark" : "bg-white"}`}>
+      {/* Header */}
+      <View className="flex-row justify-between items-center mt-5">
+    
+        <TouchableOpacity className="p-5 mb-4 rounded-full  bg-primary" onPress={toggleTheme}>
+          <Text className="text-white text-sm">{isDark ? "🌙" : "☀️"}</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Search Bar */}
+      <TextInput
+        placeholder="Search for packages"
+        placeholderTextColor={isDark ? "#aaa" : "#333"}
+        value={search}
+        onChangeText={setSearch}
+        className={`p-4 border rounded-full mb-3 ${
+          isDark ? "bg-inputBg border-gray-600 text-white" : "bg-white border-gray-300 text-black"
+        }`}
+      />
+
+      {/* Package List */}
+      <FlatList
+        data={filteredPackages}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <PackageCard item={item} isDark={isDark} />}
+        contentContainerStyle={{ paddingBottom: 16 }}
+      />
     </SafeAreaView>
   );
+}
+
+const PackageCard = ({ item, isDark }) => {
+  const navigation = useNavigation();
+  return(
+  <Pressable  onPress={() =>
+    navigation.navigate("PackageDetails", { ...item }) // Passing all item details
+  } className={`rounded-lg p-4 mb-4 ${isDark ? "bg-secondary_2" : "bg-gray-100"}`}>
+    <Image source={{ uri: item.image }} className="w-full h-64 rounded-lg mb-3" resizeMode="cover" />
+    <View>
+      <Text className={`text-lg font-bold ${isDark ? "text-white" : "text-black"}`}>{item.name}</Text>
+      <Text className={`mb-2 ${isDark ? "text-gray-400" : "text-gray-700"}`}>{item.description}</Text>
+      <Text className={`text-lg font-bold ${isDark ? "text-primary_1" : "text-primary"}`}>
+        {item.price}₹
+      </Text>
+      <View className="flex-row">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Text key={index} className={index < item.rating ? "text-yellow-400" : "text-gray-300"}>
+            {index < item.rating ? "⭐" : "☆"}
+          </Text>
+        ))}
+      </View>
+    </View>
+  </Pressable>
+  )
 }

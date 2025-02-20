@@ -1,37 +1,78 @@
-{
-    "packages": [
-      {
-        "id": 1,
-        "name": "Manali",
-        "description": "Places to visit: Shimla, Manali, Kufri, Solang Valley, Kasol, Manikaran and Chandigarh",
-        "duration": "07 Nights/07 Days",
-        "price": 21000,
-        "rating": 4
-      },
-      {
-        "id": 2,
-        "name": "Goa",
-        "description": "Places to visit: Baga Beach, Anjuna Beach, Calangute, Dudhsagar Waterfalls, Panjim",
-        "duration": "05 Nights/06 Days",
-        "price": 18000,
-        "rating": 5
-      },
-      {
-        "id": 3,
-        "name": "Leh Ladakh",
-        "description": "Places to visit: Pangong Lake, Nubra Valley, Khardung La Pass, Magnetic Hill",
-        "duration": "06 Nights/07 Days",
-        "price": 32000,
-        "rating": 5
-      },
-      {
-        "id": 4,
-        "name": "Kerala",
-        "description": "Places to visit: Munnar, Alleppey, Kochi, Thekkady, Wayanad",
-        "duration": "05 Nights/06 Days",
-        "price": 25000,
-        "rating": 4
-      }
-    ]
+[
+  {
+    "packageName": "Manali Adventure",
+    "description": "Shimla, Manali, Kufri, Solang Valley, Kasol, Manikaran, Chandigarh",
+    "duration": "7 Nights / 7 Days",
+    "price": 3444,
+    "rating": 5,
+    "activities": [
+      "Day 1: Arrival and sightseeing in Shimla",
+      "Day 2: Visit Kufri and Jakhoo Temple",
+      "Day 3: Travel to Manali, explore local market",
+      "Day 4: Solang Valley adventure activities",
+      "Day 5: Visit Kasol and Manikaran Sahib",
+      "Day 6: Travel to Chandigarh, Rock Garden tour",
+      "Day 7: Departure"
+    ],
+    "inclusions": "Hotel stay, breakfast, transport, guide",
+    "instructions": "Carry warm clothes, ID proof, and necessary medications",
+    "image": "base64_encoded_image_string"
+  },
+  {
+    "packageName": "Kashmir Paradise",
+    "description": "Srinagar, Gulmarg, Pahalgam, Sonmarg, Dal Lake",
+    "duration": "6 Nights / 7 Days",
+    "price": 4999,
+    "rating": 4.8,
+    "activities": [
+      "Day 1: Arrival in Srinagar, Shikara ride on Dal Lake",
+      "Day 2: Explore Mughal Gardens and Shankaracharya Temple",
+      "Day 3: Visit Gulmarg, enjoy Gondola ride",
+      "Day 4: Drive to Pahalgam, explore Betaab Valley",
+      "Day 5: Trip to Sonmarg, enjoy Thajiwas Glacier trek",
+      "Day 6: Leisure day for shopping and local cuisine",
+      "Day 7: Departure"
+    ],
+    "inclusions": "Houseboat stay, breakfast, transport, guide",
+    "instructions": "Carry warm clothes, ID proof, and cash for local purchases",
+    "image": "base64_encoded_image_string"
+  },
+  {
+    "packageName": "Goa Beach Escape",
+    "description": "Baga Beach, Anjuna, Dudhsagar Waterfalls, Fort Aguada",
+    "duration": "4 Nights / 5 Days",
+    "price": 2999,
+    "rating": 4.5,
+    "activities": [
+      "Day 1: Arrival in Goa, evening at Baga Beach",
+      "Day 2: Explore Anjuna and Vagator beaches",
+      "Day 3: Visit Dudhsagar Waterfalls and spice plantation",
+      "Day 4: Sightseeing at Fort Aguada and Panjim city",
+      "Day 5: Departure"
+    ],
+    "inclusions": "Hotel stay, breakfast, bike rental, guide",
+    "instructions": "Carry swimwear, sunscreen, and beach essentials",
+    "image": "base64_encoded_image_string"
+  },
+  {
+    "packageName": "Rajasthan Royal Tour",
+    "description": "Jaipur, Jodhpur, Udaipur, Jaisalmer",
+    "duration": "8 Nights / 9 Days",
+    "price": 5999,
+    "rating": 4.7,
+    "activities": [
+      "Day 1: Arrival in Jaipur, visit Amber Fort",
+      "Day 2: Explore City Palace, Hawa Mahal, and Jantar Mantar",
+      "Day 3: Travel to Jodhpur, visit Mehrangarh Fort",
+      "Day 4: Explore Umaid Bhawan Palace, Mandore Gardens",
+      "Day 5: Travel to Udaipur, boat ride at Lake Pichola",
+      "Day 6: Visit City Palace, Jagdish Temple, and Fateh Sagar Lake",
+      "Day 7: Travel to Jaisalmer, explore sand dunes",
+      "Day 8: Camel safari and cultural night in Jaisalmer",
+      "Day 9: Departure"
+    ],
+    "inclusions": "Hotel stay, breakfast, transport, cultural shows",
+    "instructions": "Carry light clothing, ID proof, and cash for shopping",
+    "image": "base64_encoded_image_string"
   }
-  
+]

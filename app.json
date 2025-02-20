@@ -5,8 +5,8 @@
     "scheme": "ivjourney",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/icone.jpg",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -15,15 +15,24 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "a"
+      "bundleIdentifier": "a",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to display your current position on the map.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to allow image uploads."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-        
       },
-      "package": "com.akash_pr.myapp"
+      "package": "com.akash_pr.myapp",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -45,6 +54,12 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you upload images."
         }
       ],
       "expo-router"
