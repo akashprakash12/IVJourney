@@ -4,7 +4,7 @@ const router = express.Router();
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const secret = process.env.SECRET_KEY;
+const _secret = process.env.SECRET_KEY;
 const saltRounds = 10;
 const { Register,Package } = require("../models/Items"); // Import the Item model
 const multer = require("multer");
@@ -42,8 +42,8 @@ router.post("/Login", async (req, res) => {
       message: "Login successful",
       token,
     });
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+  } catch (_error) {
+    res.status(500).json({ _error: "Internal server error" });
   }
 });
 const storage = multer.memoryStorage(); // Stores file in memory, or use diskStorage for saving to disk
@@ -71,10 +71,10 @@ router.post("/packages", upload.single("image"), async (req, res) => {
   }
 });
 
-router.get("/packages", async (req, res) => {
+router.get("/packages", async (_req, res) => {
   try {
     const packages = await Package.find();
-    const formattedPackages = packages.map(pkg => ({
+    const _formattedPackages = packages.map(pkg => ({
       ...pkg._doc,
       image: pkg.image ? pkg.image.toString("base64") : null, // Convert Buffer to Base64
     }));
