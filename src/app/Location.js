@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import MapView, { Marker, Polyline, UrlTile } from "react-native-maps";
 import { StyleSheet, View, Alert } from "react-native";
 import * as Location from "expo-location";
+import fetch from 'node-fetch';
 
 const OSRM_API_URL = "https://router.project-osrm.org/route/v1/driving";
 

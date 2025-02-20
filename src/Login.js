@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
   View,
   Text,
@@ -51,7 +52,7 @@ console.log(response);
     } catch (error) {
       // console.error("Login error:", error.response?.data || error.message);
 
-      // const errorMessage = error.response?.data?.error || "Failed to login";
+      const errorMessage = error.response?.data?.error || "Failed to login";
       Alert.alert("Login Failed", errorMessage);
     }
   };

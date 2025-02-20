@@ -27,7 +27,7 @@ export default function Register({ navigation }) {
 
   const handleSubmit = async () => {
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      Alert.alert("Passwords do not match!");
       return;
     }
 
@@ -59,7 +59,7 @@ export default function Register({ navigation }) {
     } catch (error) {
       //   console.error('Registration error:', error.response?.data || error.message);
 
-      //   const errorMessage = error.response?.data?.error || 'Failed to register';
+        const errorMessage = error.response?.data?.error || 'Failed to register';
       Alert.alert("Registration Failed", errorMessage);
     }
     

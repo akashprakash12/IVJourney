@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Image,
 } from "react-native";
+import { Alert } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
@@ -29,7 +30,7 @@ const AddPackageScreen = ({ navigation }) => {
     // Request permission first
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      alert("Permission to access gallery is required!");
+      Alert.alert("This is a message!"); 
       return;
     }
 
@@ -49,7 +50,7 @@ const AddPackageScreen = ({ navigation }) => {
 
   const handleSubmit = async () => {
     try {
-      const formData = new FormData();
+      const formData = new FormData(); 
       formData.append("packageName", form.packageName);
       formData.append("description", form.description);
       formData.append("duration", form.duration);
@@ -76,12 +77,12 @@ const AddPackageScreen = ({ navigation }) => {
       });
   
       console.log("Success:", response.data);
-      alert("Package added successfully!");
+      Alert.alert("Package added successfully!");
       navigation.navigate("Home");
       
     } catch (error) {
       console.error("Error:", error.response ? error.response.data : error.message);
-      alert("Failed to add package.");
+      Alert.alert("Failed to add package.");
     }
   };
   
