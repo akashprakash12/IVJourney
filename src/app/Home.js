@@ -18,7 +18,7 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchPackages = async () => {
       try {
-        const ip = "192.168.1.53";
+        const ip = "192.168.1.50";
         const response = await axios.get(`http://${ip}:5000/api/packages`);
   
         if (Array.isArray(response.data)) {

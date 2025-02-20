@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
+import { FormData } from "form-data"; // Not required in React Native, but useful in some cases
 
 const AddPackageScreen = ({ navigation }) => {
   const [form, setForm] = useState({
@@ -57,29 +58,36 @@ const AddPackageScreen = ({ navigation }) => {
       formData.append("price", form.price);
       formData.append("activities", JSON.stringify(form.activities));
       formData.append("inclusions", form.inclusions);
-      console.log(form);
-      
   
       if (image) {
         const filename = image.split("/").pop();
         const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image`;
+        const type = match ? `image/${match[1]}` : `image/jpeg`; // Default type
   
-        formData.append("image", { uri: image, name: filename, type });
+        formData.append("image", {
+          uri: image,
+          name: filename,
+          type: type,
+        });
       }
-      const ip = "192.168.103.90";
-      const response = await axios.post( `http://${ip}:5000/api/packages`, formData, {
-        
-        
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+  
+      const ip = "192.168.103.90"; // Ensure this is correct
+      const response = await axios.post(
+        `http://${ip}:5000/api/packages`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          transformRequest: (data, headers) => {
+            return data; // Ensures FormData is handled correctly
+          },
+        }
+      );
   
       console.log("Success:", response.data);
       Alert.alert("Package added successfully!");
       navigation.navigate("Home");
-      
     } catch (error) {
       console.error("Error:", error.response ? error.response.data : error.message);
       Alert.alert("Failed to add package.");

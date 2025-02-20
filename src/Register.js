@@ -41,7 +41,7 @@ export default function Register({ navigation }) {
     
     
     try {
-      const ip = "192.168.1.6";
+      const ip = "192.168.1.50";
       const response = await axios.post(
         `http://${ip}:5000/api/register`,
         userData

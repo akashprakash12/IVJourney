@@ -34,7 +34,7 @@ export default function Login({ navigation }) {
     }
 
     try {
-      const ip = "192.168.1.6"; // Default localhost for Android Emulator
+      const ip = "192.168.1.50"; // Default localhost for Android Emulator
 
 console.log(formData);
 
