@@ -5,7 +5,7 @@
     "scheme": "ivjourney",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icone.jpg",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -31,8 +31,7 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
-      ],
-      "usesCleartextTraffic": true
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
