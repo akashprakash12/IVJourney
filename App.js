@@ -38,7 +38,7 @@ function AppNavigation() {
 
   return (
     <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
-      <Stack.Navigator initialRouteName="Home">
+      <Stack.Navigator initialRouteName="Gui">
         
         <Stack.Screen name="Gui" component={Guiconponet} />
         <Stack.Screen name="Register" component={Register} options={{ headerShown: false }} />
