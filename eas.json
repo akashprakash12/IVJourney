@@ -3,7 +3,6 @@
     "version": ">= 14.2.0",
     "appVersionSource": "remote"
   },
-  "owner": "akash_pr",
   "build": {
     "development": {
       "developmentClient": true,
