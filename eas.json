@@ -3,18 +3,16 @@
     "version": ">= 14.2.0",
     "appVersionSource": "remote"
   },
+  "owner": "akash_pr",
   "build": {
     "development": {
-      "owner": "akash_pr",
       "developmentClient": true,
       "distribution": "internal"
     },
     "preview": {
-      "owner": "akash_pr",
       "distribution": "internal"
     },
     "production": {
-      "owner": "akash_pr",
       "autoIncrement": true
     }
   },
