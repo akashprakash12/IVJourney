@@ -1,12 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   TextInput,
-  Button,
   Alert,
   Text,
   SafeAreaView,
-  Image,
   TouchableOpacity,
   ScrollView,
 } from "react-native";
@@ -14,117 +12,110 @@ import axios from "axios";
 import { Eye, EyeOff } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import SvgImage from "../assets/image1.svg";
-import { StyleSheet } from "react-native";
-
+import { ThemeContext } from "../context/ThemeContext";
+import { IP } from "@env";
 export default function Register({ navigation }) {
-  const [fullName, setFullName] = useState('');
-  const [userName, setUserName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const { theme } = useContext(ThemeContext);
+  const isDarkMode = theme === "dark";
+
+  const [fullName, setFullName] = useState("");
+  const [userName, setUserName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
   const handleSubmit = async () => {
-    if (password !== confirmPassword) {
-      Alert.alert("Passwords do not match!");
+    if (
+      !fullName ||
+      !userName ||
+      !phone ||
+      !email ||
+      !password ||
+      !confirmPassword
+    ) {
+      Alert.alert("Error", "All fields are required.");
       return;
     }
 
-    const userData = {
-      fullName,
-      userName,
-      phone,
-      email,
-      password,
-    };
-    
-    
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match!");
+      return;
+    }
+
+    const userData = { fullName, userName, phone, email, password };
+
     try {
-      const ip = "192.168.1.50";
       const response = await axios.post(
-        `http://${ip}:5000/api/register`,
-        userData
+        `http://${IP}:5000/api/register`,
+        userData,
+        { headers: { "Content-Type": "application/json" } }
       );
-      
-      console.log(response);
-      
 
       Alert.alert("Registration Successful", response.data.message);
-
-      // Navigate to login or home screen after successful registration
       navigation.navigate("Login");
-      
-      
     } catch (error) {
-      //   console.error('Registration error:', error.response?.data || error.message);
-
-        const errorMessage = error.response?.data?.error || 'Failed to register';
+      console.error("Registration Error:", error.response?.data || error);
+      const errorMessage = error.response?.data?.error || "Failed to register";
       Alert.alert("Registration Failed", errorMessage);
     }
-    
-  }
-  
-
+  };
 
   return (
-    <ScrollView>
-      <SafeAreaView className="flex-1 bg-dark px-6 ite">
-        <View className="items-center mt-10 mr-9 ml-9">
-          {/* Illustration */}
-          <SvgImage width={200} height={200}></SvgImage>
+    <ScrollView className={isDarkMode ? "bg-gray-900" : "bg-white"}>
+      <SafeAreaView className="flex-1 px-5 pt-10">
+        <View className="items-center mt-5">
+          <SvgImage width={180} height={180} />
         </View>
 
-        <Text className="text-primary text-4xl font-bold mb-6 ml-6 mt-6">
+        <Text className="text-3xl font-bold text-center mt-5 text-primary">
           Create Account
         </Text>
-        <Text className="text-gray-400 text-center mt-2">
-          Hi, kindly fill in the form to proceed combat
+        <Text className="text-center text-gray-500 text-sm mb-5">
+          Hi, kindly fill in the form to proceed
         </Text>
 
-        <View className="mt-5 space-y-4 items-center">
-          <TextInput
-            placeholder="Full Name"
-            placeholderTextColor="#aaa"
-            style={styles.textInput}
-            value={fullName}
-            onChangeText={setFullName}
-            className="bg-secondary_2 text-white p-4 bg-transparent  w-96 border-primary_1 mt-5 "          />
+        <View className="mt-5">
+          {[
+            { label: "Full Name", value: fullName, setter: setFullName },
+            { label: "User Name", value: userName, setter: setUserName },
+            { label: "Phone", value: phone, setter: setPhone },
+            {
+              label: "Email",
+              value: email,
+              setter: setEmail,
+              keyboardType: "email-address",
+            },
+          ].map((input, index) => (
+            <TextInput
+              key={index}
+              placeholder={input.label}
+              placeholderTextColor={isDarkMode ? "#BBBBBB" : "#777777"}
+              value={input.value}
+              onChangeText={input.setter}
+              keyboardType={input.keyboardType || "default"}
+              className={`border-b-2 p-2 text-lg w-full mb-4 ${
+                isDarkMode
+                  ? "text-white border-pink-500"
+                  : "text-black border-gray-600"
+              }`}
+            />
+          ))}
 
-          <TextInput
-            placeholder="User Name"
-            placeholderTextColor="#aaa"
-            value={userName}
-            onChangeText={setUserName}
-            style={styles.textInput}
-            className="bg-secondary_2 text-white p-4 bg-transparent  w-96 border-primary_1 mt-5 "
-          />
-
-          <TextInput
-            placeholder="+234 Your Phone"
-            placeholderTextColor="#aaa"
-            value={phone}
-            onChangeText={setPhone}
-            style={styles.textInput}
-            className="bg-secondary_2 text-white p-4 bg-transparent  w-96 border-primary_1 mt-5 "          />
-
-          <TextInput
-            placeholder="Email"
-            placeholderTextColor="#aaa"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.textInput}
-            className="bg-secondary_2 text-white p-4 bg-transparent  w-96 border-primary_1 mt-5 "            keyboardType="email-address"
-          />
-
-          <View className="relative mt-5">
+          <View className="relative w-full">
             <TextInput
               placeholder="Password"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={isDarkMode ? "#BBBBBB" : "#777777"}
               value={password}
               onChangeText={setPassword}
-              style={styles.textInput}
-              className="bg-secondary_2 text-white p-4 bg-transparent  w-96 border-primary_1 "              secureTextEntry={!passwordVisible}
+              secureTextEntry={!passwordVisible}
+              className={`border-b-2 p-2 mt-5 mb-3 text-lg w-full ${
+                isDarkMode
+                  ? "text-white border-pink-500"
+                  : "text-black border-gray-600"
+              }`}
             />
             <TouchableOpacity
               className="absolute right-4 top-4"
@@ -134,62 +125,58 @@ export default function Register({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          <View className="relative mt-5">
+          <View className="relative w-full">
             <TextInput
               placeholder="Confirm Password"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={isDarkMode ? "#BBBBBB" : "#777777"}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              style={styles.textInput}
-              className="bg-secondary_2 text-white p-4 bg-transparent  w-96 border-primary_1 mb-5 "              secureTextEntry={!passwordVisible}
+              secureTextEntry={!confirmPasswordVisible}
+              className={`border-b-2 p-2 mt-5 mb-3 text-lg w-full ${
+                isDarkMode
+                  ? "text-white border-pink-500"
+                  : "text-black border-gray-600"
+              }`}
             />
             <TouchableOpacity
               className="absolute right-4 top-4"
-              onPress={() => setPasswordVisible(!passwordVisible)}
+              onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
             >
-              {passwordVisible ? <EyeOff color="#aaa" /> : <Eye color="#aaa" />}
+              {confirmPasswordVisible ? (
+                <EyeOff color="#aaa" />
+              ) : (
+                <Eye color="#aaa" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
+
         <View className="items-center">
-          <TouchableOpacity className="rounded-full overflow-hidden w-60 mt-5" onPress={handleSubmit}>
+          <TouchableOpacity
+            className="w-3/4 mt-5 rounded-full overflow-hidden"
+            onPress={handleSubmit} // Fixed placement
+          >
             <LinearGradient
-              colors={["#FF6480", "#F22E63"]} // pink-500 to purple-500
+              colors={["#FF6480", "#F22E63"]}
               start={[0, 0]}
               end={[1, 0]}
-              className="py-4 items-center"
+              className="p-4 items-center rounded-full"
             >
               <Text className="text-white font-bold">Create Account</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
-        <View className="flex-row justify-center mt-4 space-x-4 items-center ">
-          <TouchableOpacity className="bg-secondary_2 p-4 rounded-full mt-3 w-16 h-16 items-center">
-            <Text className="text-white">G+</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="bg-secondary_2 p-4 w-16 h-16 items-center rounded-full mt-3 ml-3">
-            <Text className="text-white">F</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity className="mt-6 items-center mb-8">
-          <Text className="text-gray-400">
+        <TouchableOpacity
+          className="mt-5 items-center mb-10"
+          onPress={() => navigation.navigate("Login")}
+        >
+          <Text className="text-gray-500">
             Already have an account?{" "}
-            <Text className="text-primary_1" onPress={() => navigation.navigate("Login")}>Login</Text>
+            <Text className="text-pink-500">Login</Text>
           </Text>
         </TouchableOpacity>
       </SafeAreaView>
     </ScrollView>
   );
 }
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  textInput: {
-    borderBottomWidth: 2// Set bottom border width
-  },
-});

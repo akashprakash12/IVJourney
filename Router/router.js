@@ -13,7 +13,7 @@ const multer = require("multer");
 
 router.post("/Login", async (req, res) => {
   const { email, password } = req.body;
-  console.log(email);
+  console.log(email,password);
   
 
   try {
@@ -24,6 +24,8 @@ router.post("/Login", async (req, res) => {
     }
 
     const user = await Register.findOne({ email: email });
+    console.log(user);
+    
 
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials." });
@@ -88,6 +90,8 @@ router.get("/packages", async (_req, res) => {
 
 router.post("/register", async (req, res) => {
   const { fullName,userName,phone,email, password } = req.body;
+  // console.log(req.b);
+  
     
   if (!fullName || !userName || !phone || !email || !password) {
     return res.status(400).json({ error: "All fields are required." });

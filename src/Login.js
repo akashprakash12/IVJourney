@@ -1,103 +1,130 @@
-import React, { useState } from "react";
-
+import React, { useState, useContext } from "react";
 import {
   View,
-  Text,
   TextInput,
-  Button,
-  TouchableOpacity,
   Alert,
-  StyleSheet,
+  Text,
+  SafeAreaView,
+  TouchableOpacity,
+  ScrollView,
 } from "react-native";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Eye, EyeOff } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import SvgImage from "../assets/image1.svg";
+import { ThemeContext } from "../context/ThemeContext"; // Import theme context
+import { IP } from "@env";
+
 
 export default function Login({ navigation }) {
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [errors, setErrors] = useState({ email: "", password: "" });
+  const { theme } = useContext(ThemeContext);
+  const isDarkMode = theme === "dark"; // Determine current mode
 
-  const handleChange = (name, value) => {
-    setFormData({ ...formData, [name]: value });
-    if (value) {
-      setErrors({ ...errors, [name]: "" });
-    }
-  };
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
-  const handleSubmit = async () => {
-    let newErrors = { email: "", password: "" };
-    if (!formData.email) newErrors.email = "Email is required";
-    if (!formData.password) newErrors.password = "Password is required";
-
-    if (newErrors.email || newErrors.password) {
-      setErrors(newErrors);
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password.");
       return;
     }
 
     try {
-      const ip = "192.168.1.50"; // Default localhost for Android Emulator
-
-console.log(formData);
-
+    
       const response = await axios.post(
-        `http://${ip}:5000/api/Login`,
-        formData
+        `http://${IP}:5000/api/Login`,
+        { email, password },
+        { headers: { "Content-Type": "application/json" } } // Ensure JSON format
       );
-console.log(response);
 
-      const { token, message } = response.data;
-      Alert.alert("Login Successful", message);
-
-      await AsyncStorage.setItem("authToken", token);
-      navigation.navigate("Home");
+      Alert.alert("Login Successful", response.data.message);
+      navigation.navigate("Home"); // Navigate to Home after login
     } catch (error) {
-      // console.error("Login error:", error.response?.data || error.message);
-
-      const errorMessage = error.response?.data?.error || "Failed to login";
+      const errorMessage = error.response?.data?.error || "Login failed";
       Alert.alert("Login Failed", errorMessage);
     }
   };
-    return (
-    <View className="flex-1 justify-center items-center px-4 bg-blue-50">
-      <Text className="text-2xl font-bold mb-5">Login</Text>
 
-      <View className="w-full max-w-lg bg-white p-6 rounded-xl shadow-md">
-        <TextInput
-          className={`h-12 border ${errors.email ? "border-red-500" : "border-gray-300"} rounded-lg px-4 mb-4`}
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={formData.email}
-          onChangeText={(value) => handleChange("email", value)}
-        />
-        {errors.email && (
-          <Text className="text-red-500 text-xs">{errors.email}</Text>
-        )}
+  return (
+    <ScrollView className={isDarkMode ? "bg-gray-900" : "bg-white"}>
+      <SafeAreaView className="flex-1 px-5 pt-10">
+        <View className="items-center mt-5">
+          <SvgImage width={200} height={200} />
+        </View>
 
-        <TextInput
-          className={`h-12 border ${errors.password ? "border-red-500" : "border-gray-300"} rounded-lg px-4 mb-4`}
-          placeholder="Password"
-          secureTextEntry
-          value={formData.password}
-          onChangeText={(value) => handleChange("password", value)}
-        />
-        {errors.password && (
-          <Text className="text-red-500 text-xs">{errors.password}</Text>
-        )}
+        <Text className="text-3xl font-bold text-center mt-5 text-primary">
+          Welcome Back
+        </Text>
+        <Text className="text-center text-gray-500 text-sm mb-5">
+          Sign in to continue
+        </Text>
 
-        <Button title="Submit" onPress={handleSubmit} color="#4F83CC" />
+        <View className="mt-5">
+          <TextInput
+            placeholder="Email"
+            placeholderTextColor={isDarkMode ? "#BBBBBB" : "#777777"}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            className={`border-b-2 p-2 text-lg w-full mb-4 ${
+              isDarkMode ? "text-white border-pink-500" : "text-black border-gray-600"
+            }`}
+          />
 
-        <TouchableOpacity>
-          <Text className="text-blue-600 text-center mt-4 underline">
-            Forgot Password?
-          </Text>
+          <View className="relative w-full">
+            <TextInput
+              placeholder="Password"
+              placeholderTextColor={isDarkMode ? "#BBBBBB" : "#777777"}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!passwordVisible}
+              className={`border-b-2 p-2 text-lg w-full ${
+                isDarkMode ? "text-white border-pink-500" : "text-black border-gray-600"
+              }`}
+            />
+            <TouchableOpacity
+              className="absolute right-4 top-4"
+              onPress={() => setPasswordVisible(!passwordVisible)}
+            >
+              {passwordVisible ? <EyeOff color="#aaa" /> : <Eye color="#aaa" />}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          className="self-end mr-2 mt-2"
+          onPress={() => Alert.alert("Forgot Password", "Reset link sent to your email.")}
+        >
+          <Text className="text-pink-500">Forgot Password?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-          <Text className="text-blue-600 text-center mt-4 underline">
-            Don't have an account? Register here
+        {/* Fix: Moved onPress to TouchableOpacity */}
+        <View className="items-center">
+          <TouchableOpacity 
+            className="w-3/4 mt-5 rounded-full overflow-hidden" 
+            onPress={handleLogin} // Fixed placement
+          >
+            <LinearGradient
+              colors={["#FF6480", "#F22E63"]}
+              start={[0, 0]}
+              end={[1, 0]}
+              className="p-4 items-center rounded-full"
+            >
+              <Text className="text-white font-bold">Login</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          className="mt-5 items-center mb-10"
+          onPress={() => navigation.navigate("Register")}
+        >
+          <Text className="text-gray-500">
+            Don't have an account? <Text className="text-pink-500">Sign Up</Text>
           </Text>
         </TouchableOpacity>
-      </View>
-    </View>
+      </SafeAreaView>
+    </ScrollView>
   );
 }

@@ -31,8 +31,6 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -45,9 +43,7 @@
         "projectId": "eeadb545-5370-4c8f-aa3c-76818c91635b"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/eeadb545-5370-4c8f-aa3c-76818c91635b"
     },
@@ -63,8 +59,7 @@
         {
           "photosPermission": "The app accesses your photos to let you upload images."
         }
-      ],
-      "expo-router"
+      ]
     ],
     "owner": "akash_pr"
   }
