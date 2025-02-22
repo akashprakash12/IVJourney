@@ -53,7 +53,7 @@ export default function Login({ navigation }) {
           <SvgImage width={200} height={200} />
         </View>
 
-        <Text className="text-3xl font-bold text-center mt-5 text-primary">
+        <Text className="text-3xl font-bold text-center mt-10 text-primary">
           Welcome Back
         </Text>
         <Text className="text-center text-gray-500 text-sm mb-5">

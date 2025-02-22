@@ -1,6 +1,8 @@
 import { View, Text, Image, TouchableOpacity, Dimensions } from "react-native";
-import { useState, useRef } from "react";
+import { useState, useRef, useContext } from "react";
 import PagerView from "react-native-pager-view";
+import { LinearGradient } from "expo-linear-gradient";
+import { ThemeContext } from "../../context/ThemeContext"; // Import Theme Context
 
 const { width, height } = Dimensions.get("window");
 
@@ -9,68 +11,96 @@ const onboardingData = [
     id: 1,
     image: require("../../assets/Onboarding-1.png"),
     title: "Welcome to IVJourney",
-    description: "Experience seamless planning and management of industrial visits. Bridging education with industry, one visit at a time."
+    description:
+      "Experience seamless planning and management of industrial visits. Bridging education with industry, one visit at a time.",
   },
   {
     id: 2,
     image: require("../../assets/Onboarding-2.png"),
     title: "Plan & Organize",
-    description: "Easily schedule visits and stay updated with industry interactions and educational tours."
+    description:
+      "Easily schedule visits and stay updated with industry interactions and educational tours.",
   },
   {
     id: 3,
     image: require("../../assets/Onboarding-3.png"),
     title: "Plan & Keep Everyone Informed",
-    description: "Easily schedule Communicate with students, staff, and industries in one place for a smooth experience. and stay updated with industry interactions and educational tours."
-  }
+    description:
+      "Easily schedule and communicate with students, staff, and industries in one place for a smooth experience.",
+  },
 ];
 
 export default function OnboardingScreen({ navigation }) {
   const [page, setPage] = useState(0);
-  const pagerRef = useRef(null); // ✅ Reference for PagerView
+  const pagerRef = useRef(null);
+  const { theme } = useContext(ThemeContext); // Get the theme
+  const isDarkMode = theme === "dark"; // Check if dark mode is active
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View className={isDarkMode ? "bg-gray-900 flex-1" : "bg-white flex-1"}>
       <PagerView
-        ref={pagerRef} 
-        style={{ flex: 1 }} // ✅ Ensure flex:1
+        ref={pagerRef}
+        style={{ flex: 1 }}
         initialPage={0}
         onPageSelected={(event) => setPage(event.nativeEvent.position)}
       >
         {onboardingData.map((item, index) => (
-          <View key={item.id} style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 20 }}>
-            <Image source={item.image} style={{ width: width * 0.8, height: height * 0.4, resizeMode: "contain" }} />
-            <Text style={{ fontSize: 22, fontWeight: "bold", color: "#f43f5e", marginTop: 20 }}>{item.title}</Text>
-            <Text style={{ fontSize: 16, textAlign: "center", color: "#333", marginTop: 10 }}>{item.description}</Text>
+          <View key={item.id} className="flex-1 items-center justify-center px-5">
+            <Image
+              source={item.image}
+              style={{ width: width * 0.8, height: height * 0.4, resizeMode: "contain" }}
+            />
+            <Text className={`text-2xl font-bold mt-5 ${isDarkMode ? "text-white" : "text-pink-500"}`}>
+              {item.title}
+            </Text>
+            <Text className={`text-center text-lg mt-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
+              {item.description}
+            </Text>
 
             {/* Pagination Dots */}
-            <View style={{ flexDirection: "row", marginTop: 20 }}>
+            <View className="flex-row mt-5">
               {onboardingData.map((_, i) => (
-                <TouchableOpacity 
-                  key={i} 
+                <TouchableOpacity
+                  key={i}
                   onPress={() => {
                     setPage(i);
-                    pagerRef.current?.setPage(i); // ✅ Set page manually
+                    pagerRef.current?.setPage(i);
                   }}
                 >
-                  <View style={{
-                    width: 10, height: 10, borderRadius: 5,
-                    backgroundColor: i === page ? "#f43f5e" : "#ddd",
-                    marginHorizontal: 5
-                  }} />
+                  <View
+                    className={`w-3 h-3 rounded-full mx-1 ${i === page ? "bg-pink-500" : "bg-gray-400"}`}
+                  />
                 </TouchableOpacity>
               ))}
             </View>
 
             {/* Navigation Buttons */}
             {index === onboardingData.length - 1 ? (
-              <TouchableOpacity onPress={() => navigation.replace("Home")} style={{ marginTop: 20 }}>
-                <Text style={{ fontSize: 16, fontWeight: "bold", color: "#f43f5e" }}>Get Started</Text>
-              </TouchableOpacity>
+              <View className="items-center">
+                <TouchableOpacity className="w-3/4 mt-5 rounded-full overflow-hidden" onPress={() => navigation.replace("Login")}>
+                  <LinearGradient
+                    colors={["#FF6480", "#F22E63"]}
+                    start={[0, 0]}
+                    end={[1, 0]}
+                    className="p-4 items-center rounded-full"
+                  >
+                    <Text className="text-white font-bold">Get Started</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             ) : (
-              <TouchableOpacity onPress={() => navigation.replace("Home")} style={{ marginTop: 20 }}>
-                <Text style={{ fontSize: 16, fontWeight: "bold", color: "#f43f5e" }}>Skip</Text>
-              </TouchableOpacity>
+              <View className="items-center">
+                <TouchableOpacity className="w-3/4 mt-5 rounded-full overflow-hidden" onPress={() => navigation.replace("Login")}>
+                  <LinearGradient
+                    colors={["#FF6480", "#F22E63"]}
+                    start={[0, 0]}
+                    end={[1, 0]}
+                    className="p-4 items-center rounded-full"
+                  >
+                    <Text className="text-white font-bold">Skip</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         ))}

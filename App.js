@@ -43,7 +43,7 @@ function AppNavigation() {
 
   return (
     <NavigationContainer theme={isDarkMode}>
-      <Stack.Navigator initialRouteName="Register">
+      <Stack.Navigator initialRouteName="Splash">
         <Stack.Screen
           name="Splash"
           component={SplashScreen}
@@ -59,7 +59,7 @@ function AppNavigation() {
           component={Register}
           options={{ headerShown: false }}
         />
-        <Stack.Screen name="Login" component={Login} />
+        <Stack.Screen name="Login" component={Login} options={{headerShown:false}} />
         <Stack.Screen name="PackageDetails" component={Package} />
         <Stack.Screen name="PackageUpload" component={PackageScreen} />
         <Stack.Screen
