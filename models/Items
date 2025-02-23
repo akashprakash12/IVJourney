@@ -31,7 +31,6 @@ const ItemSchema = new mongoose.Schema({
     image: { type: String }, // Store image URL
   }, { timestamps: true });
 
-
   const RegisterSchema = new mongoose.Schema(
     {
       fullName: { type: String, required: true },
@@ -39,9 +38,17 @@ const ItemSchema = new mongoose.Schema({
       phone: { type: String, required: true, unique: true },
       email: { type: String, required: true, unique: true },
       password: { type: String, required: true },
+      role: { 
+        type: String, 
+        required: true, 
+        enum: ["Student", "Student Leader", "HOD", "Industry Representative"] 
+      }, 
+      studentID: { type: String, unique: true, sparse: true }, // Unique but ignored if null
+      industryID: { type: String, unique: true, sparse: true }, // Unique but ignored if null
     },
-    { timestamps: true } // Adds createdAt and updatedAt fields
+    { timestamps: true }
   );
+  
 
 // // Hash password before saving
 // userSchema.pre('save', async function (next) {

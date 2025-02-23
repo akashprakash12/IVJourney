@@ -24,8 +24,8 @@ router.post("/Login", async (req, res) => {
     }
 
     const user = await Register.findOne({ email: email });
-    console.log(user);
-    
+  console.log(user.role);
+  
 
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials." });
@@ -43,6 +43,7 @@ router.post("/Login", async (req, res) => {
     res.status(200).json({
       message: "Login successful",
       token,
+      role:user.role
     });
   } catch (_error) {
     res.status(500).json({ _error: "Internal server error" });
@@ -89,39 +90,47 @@ router.get("/packages", async (_req, res) => {
 });
 
 router.post("/register", async (req, res) => {
-  const { fullName,userName,phone,email, password } = req.body;
-  // console.log(req.b);
-  
-    
-  if (!fullName || !userName || !phone || !email || !password) {
-    return res.status(400).json({ error: "All fields are required." });
-  }
- 
   try {
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ error: "Email and password are required." });
+    const { fullName, userName, phone, email, password, role } = req.body;
+
+    // Validate required fields
+    if (!fullName || !userName || !phone || !email || !password || !role) {
+      return res.status(400).json({ error: "All fields are required." });
     }
 
-    // Check if user already exists
-    const existingUser = await Register.findOne({ email });
+    // Check if phone or email already exists
+    const existingUser = await Register.findOne({ $or: [{ phone }, { email }] });
     if (existingUser) {
-      return res.status(400).json({ error: "User already exists." });
+      return res.status(400).json({ error: "Phone number or Email already in use!" });
     }
 
-    // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const newRegister = new Register({
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user object
+    const userData = {
       fullName,
       userName,
       phone,
       email,
       password: hashedPassword,
-    });
-    await newRegister.save();
+      role,
+    };
+
+    // Generate IDs only for Student and Industry Representative
+    if (role === "Student") {
+      userData.studentID = `STU-${Math.floor(10000 + Math.random() * 90000)}`;
+    } else if (role === "Industry Representative") {
+      userData.industryID = `IND-${Math.floor(10000 + Math.random() * 90000)}`;
+    }
+
+    // Create new user
+    const newUser = new Register(userData);
+    await newUser.save();
     res.status(201).json({ message: "User registered successfully." });
+
   } catch (error) {
+    console.error("Registration Error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

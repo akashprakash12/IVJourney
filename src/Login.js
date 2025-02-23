@@ -14,12 +14,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import SvgImage from "../assets/image1.svg";
 import { ThemeContext } from "../context/ThemeContext"; // Import theme context
 import { IP } from "@env";
+import { AuthContext } from "../context/Authcontext";
 
 
 export default function Login({ navigation }) {
   const { theme } = useContext(ThemeContext);
   const isDarkMode = theme === "dark"; // Determine current mode
-
+  const { login } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -39,6 +40,9 @@ export default function Login({ navigation }) {
       );
 
       Alert.alert("Login Successful", response.data.message);
+      const { token, role } = response.data;
+    
+      login(role, token);
       navigation.navigate("Home"); // Navigate to Home after login
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Login failed";
