@@ -48,23 +48,37 @@ const ItemSchema = new mongoose.Schema({
     },
     { timestamps: true }
   );
-  
+    
 
-// // Hash password before saving
-// userSchema.pre('save', async function (next) {
-//     if (!this.isModified('password')) return next();
-//     const salt = await bcrypt.genSalt(10);
-//     this.password = await bcrypt.hash(this.password, salt);
-//     next();
-//   });
+  const RequestSchema = new mongoose.Schema({
+    studentName: { type: String, required: true },
+    department: { type: String, required: true },
+    studentRep: { type: String, required: true }, // Student Representative
+    submissionDate: { type: String, required: true },
+    industry: { type: String, required: true },
+    date: { type: String, required: true },
+    studentsCount: { type: Number, required: true },
+    faculty: { type: String, required: true },
+    transport: { type: String, required: true },
+    packageDetails: { type: String, required: true },
+    activity: { type: String, required: true },
+    duration: { type: String, required: true },
+    distance: { type: String, required: true },
+    ticketCost: { type: Number, required: true },
+  });
   
-//   // Method to compare passwords
-//   userSchema.methods.comparePassword = function (password) {
-//     return bcrypt.compare(password, this.password);
-//   };
+  const StudentSchema = new mongoose.Schema({
+    studentID: { type: String, required: true, unique: true },
+    fullName: { type: String, required: true },
+    department: { type: String, required: true },
+    studentRep: { type: String, required: true }, // Student Representative
+  });
+
   
   module.exports = {
     Item: mongoose.model('Item', ItemSchema), // Export the Item model
     Package: mongoose.model('Package', PackageSchema), 
-    Register: mongoose.model('Register', RegisterSchema), // Export the User model
+    Register: mongoose.model('Register', RegisterSchema),
+    RequistModel: mongoose.model('Requist', RequestSchema),
+    StudentModel: mongoose.model('StudentModel', StudentSchema),
   };

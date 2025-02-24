@@ -6,7 +6,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const _secret = process.env.SECRET_KEY;
 const saltRounds = 10;
-const { Register,Package } = require("../models/Items"); // Import the Item model
+const { Register,Package,StudentModel } = require("../models/Items"); // Import the Item model
 const multer = require("multer");
 
 
@@ -134,6 +134,43 @@ router.post("/register", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+router.get("/api/student-details", async (req, res) => {
+  try {
+    console.log(req.query);
+    
+    const { studentID } = req.query;
+    console.log(studentID);
+    
+    const student = await StudentModel.findOne({ studentID });
+console.log(student);
+
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
+    res.json(student);
+  } catch (error) {
+    console.error("Error fetching student details:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+router.post("/api/submit-request", async (req, res) => {
+  try {
+    console.log(req.body);
+    
+   // const newRequest = new RequestModel(req.body);
+   // await newRequest.save();
+    res.status(201).json({ message: "Request submitted successfully!" });
+  } catch (error) {
+    console.error("Error submitting request:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 // Export the router
 module.exports = router;

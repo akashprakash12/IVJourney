@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,17 +6,20 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import RNPickerSelect from "react-native-picker-select";
-
+import axios from "axios"; // Import Axios for API calls
+import { IP } from "@env";
 export default function RequestForm({ navigation }) {
   // Auto-filled Student Details (Example: Replace with dynamic data from database)
-  const studentName = "Akash"; // Fetch from DB
-  const department = "Computer Science"; // Fetch from DB
+ 
   const submissionDate = new Date().toLocaleDateString(); // Auto-fill today's date
 
-  // State Variables
+  const [studentName, setStudentName] = useState("");
+  const [department, setDepartment] = useState("");
+  const [studentRep, setStudentRep] = useState(""); // Student Representative
   const [industry, setIndustry] = useState("");
   const [date, setDate] = useState("");
   const [studentsCount, setStudentsCount] = useState("");
@@ -27,16 +30,43 @@ export default function RequestForm({ navigation }) {
   const [duration, setDuration] = useState("");
   const [distance, setDistance] = useState("");
   const [ticketCost, setTicketCost] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = () => {
+
+    // Fetch Student Details from the Database
+    useEffect(() => {
+      const fetchStudentDetails = async () => {
+        try {
+          const response = await axios.get(`http://${IP}/api/student-details`, {
+            params: { studentID: "STU-63844" }, // Replace with actual student ID
+          });
+  
+          const student = response.data;
+          setStudentName(student.fullName);
+          setDepartment(student.department);
+          setStudentRep(student.studentRep); // Set Student Representative
+          setLoading(false);
+        } catch (error) {
+          console.error("Error fetching student details:", error);
+          Alert.alert("Error", "Failed to fetch student details.");
+          setLoading(false);
+        }
+      };
+  
+      fetchStudentDetails();
+    }, []);
+  // Handle Form Submission
+  const handleSubmit = async () => {
     if (!industry || !date || !studentsCount || !faculty || !transport || !packageDetails || !activity || !duration || !distance || !ticketCost) {
       Alert.alert("Error", "All fields are required!");
       return;
     }
-    Alert.alert("Success", "Your request has been submitted!");
-    navigation.navigate("PDFPreview", {
+
+    try {
+      const requestData = {
         studentName,
         department,
+        studentRep, // Include Student Rep
         submissionDate,
         industry,
         date,
@@ -48,9 +78,25 @@ export default function RequestForm({ navigation }) {
         duration,
         distance,
         ticketCost,
-      });
-   
+      };
+
+      await axios.post(`http://${IP}/api/submit-request`, requestData);
+      Alert.alert("Success", "Your request has been submitted!");
+
+      navigation.navigate("PDFPreview", requestData);
+    } catch (error) {
+      console.error("Error submitting request:", error);
+      Alert.alert("Error", "Failed to submit request.");
+    }
   };
+
+  // if (!loading) {
+  //   return (
+  //     <View className="flex-1 justify-center items-center">
+  //       <ActivityIndicator size="large" color="#F22E63" />
+  //     </View>
+  //   );
+  // }
 
   return (
     <ScrollView className="flex-1 bg-gray-100 p-5">

@@ -6,6 +6,7 @@ import {
 import { ThemeContext } from "../../context/ThemeContext";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
+import { IP } from "@env";
 
 export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
@@ -18,8 +19,8 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchPackages = async () => {
       try {
-        const ip = "192.168.1.6";
-        const response = await axios.get(`http://${ip}:5000/api/packages`);
+    
+        const response = await axios.get(`http://${IP}:5000/api/packages`);
 
         if (Array.isArray(response.data)) {
           setPackages(response.data.map(pkg => ({
