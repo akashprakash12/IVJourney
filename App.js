@@ -9,7 +9,7 @@ export default function App() {
     <AuthProvider>
       <ThemeProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <AppNavigation />
+          <AppNavigation /> //hello
         </GestureHandlerRootView>
       </ThemeProvider>
     </AuthProvider>
