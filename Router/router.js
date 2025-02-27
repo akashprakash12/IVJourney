@@ -39,16 +39,28 @@ router.post("/Login", async (req, res) => {
     const token = jwt.sign({ userId: user._id }, "your_secret_key", {
       expiresIn: "1h",
     });
+    console.log("User logged in:", user.fullName, "-", user.role,user._id);
 
     res.status(200).json({
       message: "Login successful",
       token,
-      role:user.role
+      role: user.role,
+      userDetails: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        studentID: user.studentID || null, // Include student ID if available
+        industryID: user.industryID || null, // Include industry ID if available
+        createdAt: user.createdAt,
+      },
     });
   } catch (_error) {
     res.status(500).json({ _error: "Internal server error" });
   }
 });
+
 const storage = multer.memoryStorage(); // Stores file in memory, or use diskStorage for saving to disk
 const upload = multer({ storage: storage });
 router.post("/packages", upload.single("image"), async (req, res) => {
@@ -136,26 +148,30 @@ router.post("/register", async (req, res) => {
 });
 
 
-router.get("/api/student-details", async (req, res) => {
+router.get("/api/register", async (req, res) => {
   try {
-    console.log(req.query);
-    
-    const { studentID } = req.query;
-    console.log(studentID);
-    
-    const student = await StudentModel.findOne({ studentID });
-console.log(student);
+    const { role } = req.query; // Get role from query parameters
+    console.log("Requested Role:", role);
 
-    if (!student) {
-      return res.status(404).json({ error: "Student not found" });
+    if (!role) {
+      return res.status(400).json({ error: "Role parameter is required" });
     }
 
-    res.json(student);
+    // Fetch users based on role
+    const users = await Register.find({ role });
+    console.log("Fetched Users:", users);
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "No users found for this role" });
+    }
+
+    res.json(users);
   } catch (error) {
-    console.error("Error fetching student details:", error);
+    console.error("Error fetching users by role:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 router.post("/api/submit-request", async (req, res) => {

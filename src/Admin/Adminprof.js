@@ -3,8 +3,7 @@ import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet } from "reac
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import { FontAwesome5, Feather, Ionicons } from "@expo/vector-icons";
-
-const ProfileScreen = () => {
+export default ProfileScreen = () => {
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.backButton}>
@@ -50,62 +49,6 @@ const ProfileScreen = () => {
   );
 };
 
-const Tab = createBottomTabNavigator();
-
-const BottomTabNavigator = () => {
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarStyle: styles.tabBar,
-        tabBarShowLabel: false,
-      }}
-    >
-      <Tab.Screen
-        name="Statistics"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Feather name="bar-chart-2" size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="Discover"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Feather name="map-pin" size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <FontAwesome5 name="calendar-alt" size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="Chat"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Feather name="message-circle" size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="UserProfile"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <FontAwesome5 name="user" size={size} color={color} />,
-        }}
-      />
-    </Tab.Navigator>
-  );
-};
-
-export default function App() {
-  return (
-    <NavigationContainer>
-      <BottomTabNavigator />
-    </NavigationContainer>
-  );
-}
 
 const styles = StyleSheet.create({
   container: {

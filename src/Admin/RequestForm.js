@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import RNPickerSelect from "react-native-picker-select";
 import axios from "axios"; // Import Axios for API calls
 import { IP } from "@env";
+import { AuthContext } from "../../context/Authcontext";
+
 export default function RequestForm({ navigation }) {
+  const { userDetails } = useContext(AuthContext); // Fetch user details from context
+
   // Auto-filled Student Details (Example: Replace with dynamic data from database)
  
   const submissionDate = new Date().toLocaleDateString(); // Auto-fill today's date
@@ -20,6 +24,7 @@ export default function RequestForm({ navigation }) {
   const [studentName, setStudentName] = useState("");
   const [department, setDepartment] = useState("");
   const [studentRep, setStudentRep] = useState(""); // Student Representative
+
   const [industry, setIndustry] = useState("");
   const [date, setDate] = useState("");
   const [studentsCount, setStudentsCount] = useState("");
@@ -30,31 +35,16 @@ export default function RequestForm({ navigation }) {
   const [duration, setDuration] = useState("");
   const [distance, setDistance] = useState("");
   const [ticketCost, setTicketCost] = useState("");
+
   const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (userDetails) {
+      setStudentName(userDetails.fullName);
+      setDepartment(userDetails.department || "N/A");
+      setStudentRep(userDetails.role === "Student Leader" ? userDetails.fullName : "");
+    }
+  }, [userDetails]); // Run when userDetails changes
 
-
-    // Fetch Student Details from the Database
-    useEffect(() => {
-      const fetchStudentDetails = async () => {
-        try {
-          const response = await axios.get(`http://${IP}/api/student-details`, {
-            params: { studentID: "STU-63844" }, // Replace with actual student ID
-          });
-  
-          const student = response.data;
-          setStudentName(student.fullName);
-          setDepartment(student.department);
-          setStudentRep(student.studentRep); // Set Student Representative
-          setLoading(false);
-        } catch (error) {
-          console.error("Error fetching student details:", error);
-          Alert.alert("Error", "Failed to fetch student details.");
-          setLoading(false);
-        }
-      };
-  
-      fetchStudentDetails();
-    }, []);
   // Handle Form Submission
   const handleSubmit = async () => {
     if (!industry || !date || !studentsCount || !faculty || !transport || !packageDetails || !activity || !duration || !distance || !ticketCost) {

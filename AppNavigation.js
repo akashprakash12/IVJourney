@@ -44,7 +44,7 @@ export default function AppNavigation() {
 
   return (
     <NavigationContainer theme={isDarkMode}>
-      <Stack.Navigator initialRouteName="Splash">
+      <Stack.Navigator initialRouteName="Login">
         <Stack.Screen
           name="Splash"
           component={SplashScreen}

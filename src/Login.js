@@ -40,9 +40,14 @@ export default function Login({ navigation }) {
       );
 
       Alert.alert("Login Successful", response.data.message);
-      const { token, role } = response.data;
-    
-      login(role, token);
+   
+      const { token, role, userDetails } = response.data;
+      
+   
+   
+   
+       login(role, token,userDetails);
+  
       navigation.navigate("Home"); // Navigate to Home after login
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Login failed";
