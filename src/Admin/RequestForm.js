@@ -13,20 +13,23 @@ import RNPickerSelect from "react-native-picker-select";
 import axios from "axios"; // Import Axios for API calls
 import { IP } from "@env";
 import { AuthContext } from "../../context/Authcontext";
+import { Checkbox } from "react-native-paper";
 
 export default function RequestForm({ navigation }) {
   const { userDetails } = useContext(AuthContext); // Fetch user details from context
 
+
   // Auto-filled Student Details (Example: Replace with dynamic data from database)
- 
+
   const submissionDate = new Date().toLocaleDateString(); // Auto-fill today's date
 
   const [studentName, setStudentName] = useState("");
   const [department, setDepartment] = useState("");
+  const [semester, setSemester] = useState("");
   const [studentRep, setStudentRep] = useState(""); // Student Representative
 
   const [industry, setIndustry] = useState("");
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(new Date());
   const [studentsCount, setStudentsCount] = useState("");
   const [faculty, setFaculty] = useState("");
   const [transport, setTransport] = useState("");
@@ -35,28 +38,71 @@ export default function RequestForm({ navigation }) {
   const [duration, setDuration] = useState("");
   const [distance, setDistance] = useState("");
   const [ticketCost, setTicketCost] = useState("");
+  const [driverPhoneNumber, setDriverPhoneNumber] = useState("");
 
+  const [industries, setIndustries] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     if (userDetails) {
       setStudentName(userDetails.fullName);
       setDepartment(userDetails.department || "N/A");
-      setStudentRep(userDetails.role === "Student Leader" ? userDetails.fullName : "");
+      setStudentRep(
+        userDetails.role === "Student Leader" ? userDetails.fullName : ""
+      );
     }
+
+    fetchPackages();
   }, [userDetails]); // Run when userDetails changes
 
-  // Handle Form Submission
+  const [checklist, setChecklist] = useState({
+    minutesOfMeeting: false,
+    studentList: false,
+    tourItinerary: false,
+    undertaking: false,
+    permissionLetter: false,
+    permanentFaculty: false,
+    ladyFaculty: false,
+    educationalTour: false,
+    nightJourney: false,
+    driverLicense: false,
+    vehicleRCBook: false,
+    hotelBooking: false,
+  });
+  const handleChecklistChange = (key) => {
+    setChecklist((prevChecklist) => ({
+      ...prevChecklist,
+      [key]: !prevChecklist[key],
+    }));
+  };
+
+  // // Handle Form Submission
   const handleSubmit = async () => {
-    if (!industry || !date || !studentsCount || !faculty || !transport || !packageDetails || !activity || !duration || !distance || !ticketCost) {
+    if (
+      !industry ||
+      !date ||
+      !studentsCount ||
+      !faculty ||
+      !transport ||
+      !packageDetails ||
+      !activity ||
+      !duration ||
+      !distance ||
+      !ticketCost ||
+      !driverPhoneNumber
+    ) {
       Alert.alert("Error", "All fields are required!");
       return;
     }
-
+  
     try {
+     
       const requestData = {
+        Obj_id:userDetails._id,
+        role:userDetails.role,
+        email:userDetails.email,
         studentName,
         department,
-        studentRep, // Include Student Rep
+        studentRep,
         submissionDate,
         industry,
         date,
@@ -66,21 +112,64 @@ export default function RequestForm({ navigation }) {
         packageDetails,
         activity,
         duration,
-        distance,
+        distance: parseFloat(distance),
         ticketCost,
+        driverPhoneNumber,
+        checklist, // Include checklist data
       };
-
-      await axios.post(`http://${IP}/api/submit-request`, requestData);
+  
+      console.log("Submitting Request:", requestData);
+  
+      const response = await axios.post(`http://${IP}:5000/api/submit-request`, requestData);
+      console.log(response);
+      
+  
       Alert.alert("Success", "Your request has been submitted!");
-
-      navigation.navigate("PDFPreview", requestData);
     } catch (error) {
       console.error("Error submitting request:", error);
-      Alert.alert("Error", "Failed to submit request.");
+  
+      if (error.response) {
+        if (error.response.status === 409) {
+          Alert.alert("Duplicate Request", "You have already submitted a request for this industry on the same date.");
+        } else {
+          Alert.alert("Error", error.response.data.error || "Failed to submit request.");
+        }
+      } else if (error.request) {
+        Alert.alert("Error", "No response received from the server. Check your network connection.");
+      } else {
+        Alert.alert("Error", "Unexpected error occurred.");
+      }
+    }
+  };
+  
+
+  const requestData = {
+    submissionDate: new Date(), // Converts today's date
+    date: new Date("2025-04-10"), // Example
+  };
+
+  const fetchPackages = async () => {
+    try {
+      const response = await axios.get(`http://${IP}:5000/api/packages`);
+      if (!Array.isArray(response.data)) {
+        throw new Error("Invalid API response format. Expected an array.");
+      }
+
+      const packageData = response.data.map((pkg) => ({
+        label: pkg.label, // Use correct keys
+        value: pkg.value,
+      }));
+
+      setIndustries(packageData); // Update state
+    } catch (error) {
+      console.error("Error fetching packages:", error);
+      Alert.alert("Error", "Failed to load packages.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // if (!loading) {
+  // if (loading) {
   //   return (
   //     <View className="flex-1 justify-center items-center">
   //       <ActivityIndicator size="large" color="#F22E63" />
@@ -110,23 +199,39 @@ export default function RequestForm({ navigation }) {
           className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-gray-600"
         />
 
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Date of Submission</Text>
+        {/* Semester (New Field) */}
+        <Text className="text-gray-700 font-medium mt-4 mb-1">Semester</Text>
+        <TextInput
+          placeholder="Enter Semester"
+          value={semester}
+          onChangeText={setSemester}
+          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
+        />
+
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Date of Submission
+        </Text>
         <TextInput
           value={submissionDate}
           editable={false}
           className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-gray-600"
         />
 
-        {/* Industry Selection */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Select Industry</Text>
+        {/* Industry Selection from Packages */}
+        {/* Industry Selection from Packages */}
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Select Package
+        </Text>
         <RNPickerSelect
-          onValueChange={(value) => setIndustry(value)}
-          items={[
-            { label: "Infosys", value: "Infosys" },
-            { label: "TCS", value: "TCS" },
-            { label: "Wipro", value: "Wipro" },
-          ]}
-          placeholder={{ label: "Choose an Industry...", value: null }}
+          onValueChange={(value) => {
+            console.log("Selected Package:", value);
+            setIndustry(value);
+          }}
+          items={industries.length > 0 ? industries : []} // Prevent errors
+          placeholder={{
+            label: loading ? "Loading packages..." : "Choose a Package...",
+            value: null,
+          }}
         />
 
         {/* Visit Date */}
@@ -139,7 +244,9 @@ export default function RequestForm({ navigation }) {
         />
 
         {/* No. of Students */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Number of Students</Text>
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Number of Students
+        </Text>
         <TextInput
           placeholder="Enter number"
           keyboardType="numeric"
@@ -149,7 +256,9 @@ export default function RequestForm({ navigation }) {
         />
 
         {/* Faculty */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Accompanying Faculty</Text>
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Accompanying Faculty
+        </Text>
         <RNPickerSelect
           onValueChange={(value) => setFaculty(value)}
           items={[
@@ -160,7 +269,9 @@ export default function RequestForm({ navigation }) {
         />
 
         {/* Transport */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Mode of Transport</Text>
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Mode of Transport
+        </Text>
         <RNPickerSelect
           onValueChange={(value) => setTransport(value)}
           items={[
@@ -171,7 +282,9 @@ export default function RequestForm({ navigation }) {
         />
 
         {/* Package Details */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Package Details</Text>
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Package Details
+        </Text>
         <TextInput
           placeholder="Describe package"
           value={packageDetails}
@@ -180,7 +293,9 @@ export default function RequestForm({ navigation }) {
         />
 
         {/* Activity */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Activity Plan</Text>
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Activity Plan
+        </Text>
         <TextInput
           placeholder="Brief about planned activities"
           value={activity}
@@ -189,7 +304,9 @@ export default function RequestForm({ navigation }) {
         />
 
         {/* Duration */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Duration (in days)</Text>
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Duration (in days)
+        </Text>
         <TextInput
           placeholder="e.g., 2 days"
           value={duration}
@@ -198,7 +315,9 @@ export default function RequestForm({ navigation }) {
         />
 
         {/* Distance */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Distance (in km)</Text>
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Distance (in km)
+        </Text>
         <TextInput
           placeholder="e.g., 100 km"
           keyboardType="numeric"
@@ -208,7 +327,9 @@ export default function RequestForm({ navigation }) {
         />
 
         {/* Travel Ticket Cost */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Travel Ticket Cost</Text>
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Travel Ticket Cost
+        </Text>
         <TextInput
           placeholder="Enter cost"
           keyboardType="numeric"
@@ -216,7 +337,30 @@ export default function RequestForm({ navigation }) {
           onChangeText={setTicketCost}
           className="border border-gray-300 p-3 rounded-lg bg-gray-50"
         />
+        <Text className="text-gray-700 font-medium mt-4 mb-1">Checklist</Text>
+        {Object.entries(checklist).map(([key, value]) => (
+          <View key={key} className="flex-row items-center mb-2">
+            <Checkbox
+              status={value ? "checked" : "unchecked"}
+              onPress={() => handleChecklistChange(key)}
+            />
+            <Text className="ml-2 capitalize">
+              {key.replace(/([A-Z])/g, " $1")}
+            </Text>
+          </View>
+        ))}
 
+        {/* Driver Phone Number (New Field) */}
+        <Text className="text-gray-700 font-medium mt-4 mb-1">
+          Driver Phone Number
+        </Text>
+        <TextInput
+          placeholder="Enter Driver's Contact"
+          keyboardType="phone-pad"
+          value={driverPhoneNumber}
+          onChangeText={setDriverPhoneNumber}
+          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
+        />
         {/* Submit Button */}
         <View className="items-center mt-6">
           <TouchableOpacity
@@ -229,7 +373,9 @@ export default function RequestForm({ navigation }) {
               end={[1, 0]}
               className="p-4 items-center rounded-full"
             >
-              <Text className="text-white font-bold text-lg">Submit Request</Text>
+              <Text className="text-white font-bold text-lg">
+                Submit Request
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>

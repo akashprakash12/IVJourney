@@ -43,9 +43,6 @@ export default function Login({ navigation }) {
    
       const { token, role, userDetails } = response.data;
       
-   
-   
-   
        login(role, token,userDetails);
   
       navigation.navigate("Home"); // Navigate to Home after login
