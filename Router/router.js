@@ -23,6 +23,7 @@ console.log(IP);
 // const storage = multer.memoryStorage(); // Stores file in memory, or use diskStorage for saving to disk
 // const upload = multer({ storage: storage });
 
+// Ensure uploads directory exists
 const uploadDir = path.join(__dirname, "../uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -248,52 +249,51 @@ router.post("/submit-request", async (req, res) => {
 });
 
 // 1️⃣ Insert or Update User Profile
-router.post(
-  "/updateProfile",
-  upload.single("profileImage"),
-  async (req, res) => {
-    const { name, studentID, branch, email, phone } = req.body;
+router.post("/updateProfile", upload.single("profileImage"), async (req, res) => {
+  const { name, studentID, branch, email, phone } = req.body;
 
-    try {
-      let user = await Profile.findOne({ email });
+  try {
+    let user = await Profile.findOne({ email });
 
-      let profileImage = req.file
-        ? `/uploads/${req.file.filename}`
-        : user?.profileImage || null; // Keep old image if no new image uploaded
+    if (!user) {
+      // If user doesn't exist, create a new profile
+      const newUser = new Profile({
+        name,
+        studentID: studentID || null,
+        branch,
+        email,
+        phone,
+        profileImage: req.file ? `/uploads/${req.file.filename}` : null,
+      });
 
-      if (user) {
-        // Update existing user
-        user.name = name;
-        if (studentID) user.studentID = studentID;
-        user.branch = branch;
-        user.phone = phone;
-        user.profileImage = profileImage;
-
-        await user.save();
-        return res.json({ message: "Profile updated successfully", user });
-      } else {
-        // Create new user
-        const newUser = new Profile({
-          name,
-          studentID: studentID || null,
-          branch,
-          email,
-          phone,
-          profileImage,
-        });
-
-        await newUser.save();
-        return res.json({
-          message: "Profile created successfully",
-          user: newUser,
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Server error" });
+      await newUser.save();
+      return res.json({ message: "Profile created successfully", user: newUser });
     }
+
+    // If a new image is uploaded, delete the old one
+    if (req.file && user.profileImage) {
+      const oldImagePath = path.join(__dirname, "..", user.profileImage);
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath); // Delete the old image
+      }
+    }
+
+    // Update user profile
+    user.name = name;
+    if (studentID) user.studentID = studentID;
+    user.branch = branch;
+    user.phone = phone;
+    if (req.file) {
+      user.profileImage = `/uploads/${req.file.filename}`; // Save new image
+    }
+
+    await user.save();
+    return res.json({ message: "Profile updated successfully", user });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ message: "Server error" });
   }
-);
+});
 
 router.get("/getProfile/:email", async (req, res) => {
   try {
@@ -334,6 +334,7 @@ router.get("/request-details/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
 
+
     const userRequest = await Request.findOne({ Obj_id: userId }).sort({ submissionDate: -1 });
 
     if (!userRequest) {
@@ -346,6 +347,41 @@ router.get("/request-details/:userId", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch request" });
   }
 });
+
+router.put("/request-status/:requestId", async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { status } = req.body;
+    console.log(requestId);
+    
+
+    // Ensure status is valid
+    const validStatuses = ["Approved", "Rejected", "Pending"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+
+    // Update request status in MongoDB
+    const updatedRequest = await Request.findOneAndUpdate(
+      { Obj_id: requestId }, // Match Obj_id instead of _id
+      { status },
+      { new: true }
+    );
+    
+    console.log(updatedRequest);
+    
+
+    if (!updatedRequest) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    res.status(200).json({ message: `Request marked as ${status}`, updatedRequest });
+  } catch (error) {
+    console.error("Error updating request status:", error);
+    res.status(500).json({ error: "Failed to update request status" });
+  }
+});
+
 
 
 // Export the router

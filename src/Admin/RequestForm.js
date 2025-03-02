@@ -143,10 +143,7 @@ export default function RequestForm({ navigation }) {
   };
   
 
-  const requestData = {
-    submissionDate: new Date(), // Converts today's date
-    date: new Date("2025-04-10"), // Example
-  };
+
 
   const fetchPackages = async () => {
     try {

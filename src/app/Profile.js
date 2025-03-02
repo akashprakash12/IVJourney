@@ -16,15 +16,16 @@ import { IP } from "@env"; // Your backend IP
 import { AuthContext } from "../../context/Authcontext";
 
 export default function ProfileScreen({ navigation }) {
-  const { userDetails } = useContext(AuthContext); // Get user details from context
+  const { userDetails, setUserDetails } = useContext(AuthContext); // Get user details and setter function
+
   console.log("User Details from Context:", userDetails);
 
   // States for user data
-  const [name, setName] = useState("");
-  const [studentID, setStudentID] = useState("");
-  const [branch, setBranch] = useState("");
+  const [name, setName] = useState(userDetails?.fullName || "");
+  const [studentID, setStudentID] = useState(userDetails?.studentID || "");
+  const [branch, setBranch] = useState(userDetails?.branch || "");
   const [email, setEmail] = useState(userDetails?.email || ""); // Email should not be updated
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(userDetails?.phone || "");
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -108,9 +109,17 @@ export default function ProfileScreen({ navigation }) {
 
       console.log("Server Response: ", response.data);
 
+      // Update AuthContext to reflect changes immediately
+      setUserDetails((prev) => ({
+        ...prev,
+        fullName: name,
+        studentID: studentID,
+        branch: branch,
+        phone: phone,
+        profileImage: response.data.profileImage || image,
+      }));
+
       Alert.alert("Success", response.data.message);
-      setImage(response.data.profileImage);
-      navigation.navigate("Home");
     } catch (error) {
       console.error("Update Failed:", error);
       Alert.alert("Update Failed", error.response?.data?.message || "Something went wrong.");
@@ -170,6 +179,7 @@ export default function ProfileScreen({ navigation }) {
             <TextInput
               className="border-b-2 border-gray-300 text-lg py-1 bg-gray-100 text-gray-500"
               value={email}
+              onChangeText={setEmail}
               editable={false} // Email should not be editable
             />
 

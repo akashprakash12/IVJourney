@@ -52,26 +52,25 @@ const RegisterSchema = new mongoose.Schema(
 
 const RequestSchema = new mongoose.Schema({
   Obj_id: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Register" },
-  role:{type:String,required:true},
-  email: { type: String, required: true},
+  role: { type: String, required: true },
+  email: { type: String, required: true },
   studentName: { type: String, required: true },
   department: { type: String, required: true },
   studentRep: { type: String, required: true },
-  submissionDate: { type: Date, required: true }, // Changed to Date type
+  submissionDate: { type: Date, required: true }, // Date type
   industry: { type: String, required: true },
-  date: { type: Date, required: true }, // Changed to Date type
+  date: { type: Date, required: true }, // Date type
   studentsCount: { type: Number, required: true },
   faculty: { type: String, required: true },
   transport: { type: String, required: true },
   packageDetails: { type: String, required: true },
   activity: { type: String, required: true },
   duration: { type: String, required: true },
-  distance: { type: Number, required: true }, // Changed to Number type
+  distance: { type: Number, required: true }, // Number type
   ticketCost: { type: Number, required: true },
-  driverPhoneNumber: { type: String, required: true }, // Added missing field
-  checklist: { type: Object, required: true }
-
-  // Added missing checklist field
+  driverPhoneNumber: { type: String, required: true },
+  checklist: { type: Object, required: true },
+  status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" }
 });
 
 const StudentSchema = new mongoose.Schema({
