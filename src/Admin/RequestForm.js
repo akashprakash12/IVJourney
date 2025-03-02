@@ -118,7 +118,7 @@ export default function RequestForm({ navigation }) {
         />
 
         {/* Industry Selection */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Select Industry</Text>
+        <Text className="text-gray-700 font-medium mt-4 mb-1">Select Package</Text>
         <RNPickerSelect
           onValueChange={(value) => setIndustry(value)}
           items={[
