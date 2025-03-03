@@ -1,7 +1,7 @@
 // db.js
 const mongoose = require('mongoose');
-require('dotenv').config({ path: '../.env' }); // Load environment variables
-// require('dotenv').config(); // Automatically loads from the root directory
+// require('dotenv').config({ path: '../.env' }); // Load environment variables
+require('dotenv').config(); // Automatically loads from the root directory
 // const uri = 'mongodb://localhost:27017/nativeapp';
 const uri = process.env.MONGODB_URI;
 console.log("Loaded URI:", process.env.MONGODB_URI);

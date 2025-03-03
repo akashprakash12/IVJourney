@@ -382,7 +382,22 @@ router.put("/request-status/:requestId", async (req, res) => {
   }
 });
 
+router.post("/select-package", async (req, res) => {
+  try {
+    const { userId, packageName, price } = req.body;
 
+    if (!userId || !packageName || !price) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const newSelection = new PackageSelectionModel({ userId, packageName, price });
+    await newSelection.save();
+
+    res.status(201).json({ message: "Package selection saved successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
 
 // Export the router
 module.exports = router;

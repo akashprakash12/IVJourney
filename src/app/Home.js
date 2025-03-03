@@ -7,6 +7,8 @@ import { ThemeContext } from "../../context/ThemeContext";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import { IP } from "@env";
+import { AuthContext } from "../../context/Authcontext";
+
 
 export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);

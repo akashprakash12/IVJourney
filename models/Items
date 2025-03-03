@@ -91,6 +91,17 @@ const ProfileSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+
+const PackageSelection = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  packageName: String,
+  price: String,
+  timestamp: { type: Date, default: Date.now },
+});
+
+
+
+
 module.exports = {
   Item: mongoose.model("Item", ItemSchema), // Export the Item model
   Package: mongoose.model("Package", PackageSchema),
@@ -98,4 +109,5 @@ module.exports = {
   Request: mongoose.model("Request", RequestSchema),
   StudentModel: mongoose.model("StudentModel", StudentSchema),
   Profile: mongoose.model("Profile", ProfileSchema),
+  PackageSelectionModel:mongoose.model("PackageSelection", PackageSelection)
 };
