@@ -1,8 +1,10 @@
 // db.js
 const mongoose = require('mongoose');
-// require('dotenv').config({ path: '../.env' }); // Load environment variables
-require('dotenv').config(); // Automatically loads from the root directory
+require('dotenv').config({ path: '../.env' }); // Load environment variables
+// require('dotenv').config(); // Automatically loads from the root directory
+// const uri = 'mongodb://localhost:27017/nativeapp';
 const uri = process.env.MONGODB_URI;
+console.log("Loaded URI:", process.env.MONGODB_URI);
 // const uri="mongodb+srv://akash:eq8LpDlTm4LNxeu0@cluster0.yvwv9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
 if (!uri) {

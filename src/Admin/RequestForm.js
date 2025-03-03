@@ -214,16 +214,8 @@ export default function RequestForm({ navigation }) {
           className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-gray-600"
         />
 
-<<<<<<< HEAD
         {/* Industry Selection */}
         <Text className="text-gray-700 font-medium mt-4 mb-1">Select Package</Text>
-=======
-        {/* Industry Selection from Packages */}
-        {/* Industry Selection from Packages */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">
-          Select Package
-        </Text>
->>>>>>> 2db38cb95d1b634cb1347c0c22b6bf216cc14e3f
         <RNPickerSelect
           onValueChange={(value) => {
             console.log("Selected Package:", value);
