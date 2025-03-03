@@ -43,9 +43,7 @@ export default function PackageDetails() {
       <ScrollView>
         {/* Header */}
         <View className={`py-6 px-4 flex-row items-center ${bgColor}`}>
-          <Pressable onPress={() => navigation.goBack()} className="p-2">
-            <Ionicons name="arrow-back" size={24} color={isDarkMode ? "white" : "black"} />
-          </Pressable>
+          
           <Text className={`text-xl font-bold flex-1 text-center ${textColor}`}>{name}</Text>
         </View>
 
@@ -55,7 +53,7 @@ export default function PackageDetails() {
         {/* Details Section */}
         <View className={`p-6 rounded-t-3xl ${bgColor}`}>
           <View className="items-center mb-6">
-            <Text className="bg-[#F22E63] text-white text-lg font-bold px-6 py-2 rounded-full">
+            <Text className="bg-[#F22E63] text-black text-lg font-bold px-6 py-2 rounded-full">
               {price}₹ Per Person
             </Text>
           </View>
