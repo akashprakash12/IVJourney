@@ -34,6 +34,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 
 // Import logo
 import Logo from "./assets/icone.jpg";
+import StudentRequist from "./src/Student/StudentRequist";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -159,7 +160,21 @@ function TabNavigator() {
       />
     );
   }
-
+  if (userRole === "Student") {
+    roleBasedTabs.push(
+      <Tab.Screen
+        key="StudentDashboard"
+        name="Student Dashboard"
+        component={StudentRequist}
+        options={{
+          title: "Upload",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome size={28} name="upload" color={color} />
+          ),
+        }}
+      />
+    );
+  }
   if (userRole === "HOD") {
     roleBasedTabs.push(
       <Tab.Screen

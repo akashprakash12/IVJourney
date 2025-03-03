@@ -33,7 +33,9 @@ export default function ProfileScreen({ navigation }) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await axios.get(`http://${IP}:5000/api/getProfile/${email}`);
+        const response = await axios.get(
+          `http://${IP}:5000/api/getProfile/${email}`
+        );
         const data = response.data;
 
         setName(data.name || "");
@@ -103,9 +105,13 @@ export default function ProfileScreen({ navigation }) {
 
       console.log("Form Data: ", formData);
 
-      const response = await axios.post(`http://${IP}:5000/api/updateProfile`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await axios.post(
+        `http://${IP}:5000/api/updateProfile`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
 
       console.log("Server Response: ", response.data);
 
@@ -122,13 +128,18 @@ export default function ProfileScreen({ navigation }) {
       Alert.alert("Success", response.data.message);
     } catch (error) {
       console.error("Update Failed:", error);
-      Alert.alert("Update Failed", error.response?.data?.message || "Something went wrong.");
+      Alert.alert(
+        "Update Failed",
+        error.response?.data?.message || "Something went wrong."
+      );
     }
   };
 
   return (
     <ScrollView className="flex-1 bg-white px-5 pt-10">
-      <Text className="text-2xl font-bold text-center text-pink-600">Profile</Text>
+      <Text className="text-2xl font-bold text-center text-pink-600">
+        Profile
+      </Text>
 
       {loading ? (
         <ActivityIndicator size="large" color="#E91E63" className="mt-10" />
@@ -159,7 +170,9 @@ export default function ProfileScreen({ navigation }) {
 
             {studentID ? (
               <>
-                <Text className="text-gray-600 font-semibold mt-3">Student ID</Text>
+                <Text className="text-gray-600 font-semibold mt-3">
+                  Student ID
+                </Text>
                 <TextInput
                   className="border-b-2 border-pink-500 text-lg py-1"
                   value={studentID}
@@ -167,13 +180,16 @@ export default function ProfileScreen({ navigation }) {
                 />
               </>
             ) : null}
-
-            <Text className="text-gray-600 font-semibold mt-3">Branch</Text>
-            <TextInput
-              className="border-b-2 border-pink-500 text-lg py-1"
-              value={branch}
-              onChangeText={setBranch}
-            />
+            {branch ? (
+              <>
+                <Text className="text-gray-600 font-semibold mt-3">Branch</Text>
+                <TextInput
+                  className="border-b-2 border-pink-500 text-lg py-1"
+                  value={branch}
+                  onChangeText={setBranch}
+                />
+              </>
+            ) : null}
 
             <Text className="text-gray-600 font-semibold mt-3">Email</Text>
             <TextInput
@@ -183,7 +199,9 @@ export default function ProfileScreen({ navigation }) {
               editable={false} // Email should not be editable
             />
 
-            <Text className="text-gray-600 font-semibold mt-3">Phone Number</Text>
+            <Text className="text-gray-600 font-semibold mt-3">
+              Phone Number
+            </Text>
             <TextInput
               className="border-b-2 border-pink-500 text-lg py-1"
               value={phone}
@@ -193,7 +211,10 @@ export default function ProfileScreen({ navigation }) {
           </View>
 
           {/* Submit Button */}
-          <TouchableOpacity className="bg-pink-500 py-3 rounded-lg mt-5 items-center" onPress={handleSubmit}>
+          <TouchableOpacity
+            className="bg-pink-500 py-3 rounded-lg mt-5 items-center"
+            onPress={handleSubmit}
+          >
             <Text className="text-white font-bold text-lg">Save Changes</Text>
           </TouchableOpacity>
         </>
