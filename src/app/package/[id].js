@@ -77,21 +77,8 @@ export default function PackageDetails() {
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View className={`py-6 px-4 flex-row items-center ${bgColor}`}>
-<<<<<<< HEAD
           
           <Text className={`text-xl font-bold flex-1 text-center ${textColor}`}>{name}</Text>
-=======
-          <Pressable onPress={() => navigation.goBack()} className="p-2">
-            <Ionicons
-              name="arrow-back"
-              size={26}
-              color={isDarkMode ? "white" : "black"}
-            />
-          </Pressable>
-          <Text className={`text-xl font-bold flex-1 text-center ${textColor}`}>
-            {name}
-          </Text>
->>>>>>> c633036f7872bed54f41a42136fe61df75e44495
         </View>
 
         {/* Image */}
@@ -104,11 +91,7 @@ export default function PackageDetails() {
         {/* Details Section */}
         <View className={`p-6 rounded-t-3xl mt-4 ${bgColor}`}>
           <View className="items-center mb-6">
-<<<<<<< HEAD
             <Text className="bg-[#F22E63] text-black text-lg font-bold px-6 py-2 rounded-full">
-=======
-            <Text className="bg-gradient-to-r from-[#F22E63] to-[#F58220] text-white text-lg font-bold px-6 py-2 rounded-full shadow-md">
->>>>>>> c633036f7872bed54f41a42136fe61df75e44495
               {price}₹ Per Person
             </Text>
           </View>
