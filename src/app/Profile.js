@@ -23,6 +23,9 @@ export default function ProfileScreen({ navigation }) {
   // States for user data
   const [name, setName] = useState(userDetails?.fullName || "");
   const [studentID, setStudentID] = useState(userDetails?.studentID || "");
+  const [industryID, setindustryID] = useState(userDetails?.industryID|| "");
+  
+  
   const [branch, setBranch] = useState(userDetails?.branch || "");
   const [email, setEmail] = useState(userDetails?.email || ""); // Email should not be updated
   const [phone, setPhone] = useState(userDetails?.phone || "");
@@ -75,7 +78,7 @@ export default function ProfileScreen({ navigation }) {
 
   // Submit Form Data
   const handleSubmit = async () => {
-    if (!name || !branch || !phone) {
+    if (!name || !phone) {
       Alert.alert("Error", "All fields are required.");
       return;
     }
@@ -87,9 +90,11 @@ export default function ProfileScreen({ navigation }) {
       formData.append("phone", phone);
       formData.append("email", email); // Email should not change
 
-      if (studentID) {
+      if (studentID || industryID) {
         formData.append("studentID", studentID);
+        formData.append("industryID", industryID);
       }
+      
 
       if (image && !image.startsWith("http")) {
         let filename = image.split("/").pop();

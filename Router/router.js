@@ -23,7 +23,6 @@ console.log(IP);
 // const storage = multer.memoryStorage(); // Stores file in memory, or use diskStorage for saving to disk
 // const upload = multer({ storage: storage });
 
-// Ensure uploads directory exists
 const uploadDir = path.join(__dirname, "../uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -35,10 +34,21 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+    const filePath = path.join(uploadDir, file.originalname);
+
+    // ✅ Check if the file already exists
+    if (fs.existsSync(filePath)) {
+      console.log("File already exists, reusing:", file.originalname);
+      cb(null, file.originalname); // Use the existing filename
+    } else {
+      console.log("Saving new file:", file.originalname);
+      cb(null, file.originalname); // Save with original filename (no timestamp)
+    }
   },
 });
+
 const upload = multer({ storage });
+
 
 router.post("/Login", async (req, res) => {
   const { email, password } = req.body;
@@ -90,45 +100,83 @@ router.post("/Login", async (req, res) => {
 
 router.post("/packages", upload.single("image"), async (req, res) => {
   try {
-    console.log("Received Data:", req.body); // Form fields
-    console.log("Received File:", req.file); // Uploaded image
+    console.log("Received Data:", req.body); 
+    console.log("Received File:", req.file); 
+
+    const price = Number(req.body.price);
+    const activities = req.body.activities ? JSON.parse(req.body.activities) : [];
+    const inclusions = Array.isArray(req.body.inclusions) ? req.body.inclusions : [req.body.inclusions];
+
+    let existingPackage = await Package.findOne({ packageName: req.body.packageName });
+
+    if (existingPackage) {
+      // If a new image is uploaded, delete the old image
+      if (req.file && existingPackage.image) {
+        const oldImagePath = path.join(__dirname, "../", existingPackage.image);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath); // Delete old image
+        }
+      }
+
+      // Update existing package
+      existingPackage.description = req.body.description;
+      existingPackage.duration = req.body.duration;
+      existingPackage.price = price;
+      existingPackage.activities = activities;
+      existingPackage.inclusions = inclusions;
+      existingPackage.instructions=req.body.instructions;
+      
+      if (req.file) {
+        existingPackage.image = req.file.path; // Update image only if new file is uploaded
+      }
+
+      await existingPackage.save();
+      return res.status(200).json({ message: "Package updated successfully!", package: existingPackage });
+    }
+
+    // Create new package if it doesn't exist
     const newPackage = new Package({
       packageName: req.body.packageName,
       description: req.body.description,
       duration: req.body.duration,
-      price: req.body.price,
-      activities: JSON.parse(req.body.activities), // Parse activities array
-      inclusions: req.body.inclusions,
-      image: req.file ? req.file.buffer.toString("base64") : null, // Convert image to base64 (or store in Cloudinary)
+      price: price,
+      activities: activities,
+      inclusions: inclusions,
+      instructions:req.body.instructions,
+      image: req.file ? req.file.path : null,
     });
 
+    console.log("New Package:", newPackage);
+
     await newPackage.save();
-    res
-      .status(201)
-      .json({ message: "Package saved successfully!", package: newPackage });
+    res.status(201).json({ message: "Package saved successfully!", package: newPackage });
   } catch (error) {
+    console.error("Error saving package:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
+
 router.get("/packages", async (_req, res) => {
   try {
     const packages = await Package.find();
+    
     if (!packages || packages.length === 0) {
       return res.status(404).json({ error: "No packages available" });
     }
+
     const formattedPackages = packages.map((pkg) => ({
-      label: pkg.packageName, // Ensure packageName is correctly formatted
-      value: pkg.packageName,
-      ...pkg._doc, // Include other data
-      image: pkg.image ? pkg.image.toString("base64") : null, // Convert Buffer to Base64
+      label: pkg.packageName, // ✅ Name for dropdowns
+      value: pkg._id, // ✅ Unique identifier
+      ...pkg._doc, // ✅ Include other fields
+      image: pkg.image ? `http://${IP}:5000/uploads/${path.basename(pkg.image)}` : null, // ✅ Send correct image URL
     }));
 
     res.status(200).json(formattedPackages);
   } catch (error) {
+    console.error("Error fetching packages:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 router.post("/register", async (req, res) => {
   try {
     const { fullName, userName, phone, email, password, role } = req.body;
@@ -250,7 +298,7 @@ router.post("/submit-request", async (req, res) => {
 
 // 1️⃣ Insert or Update User Profile
 router.post("/updateProfile", upload.single("profileImage"), async (req, res) => {
-  const { name, studentID, branch, email, phone } = req.body;
+  const { name, studentID,industryID, branch, email, phone } = req.body;
 
   try {
     let user = await Profile.findOne({ email });
@@ -260,6 +308,7 @@ router.post("/updateProfile", upload.single("profileImage"), async (req, res) =>
       const newUser = new Profile({
         name,
         studentID: studentID || null,
+        industryID:industryID|| null,
         branch,
         email,
         phone,

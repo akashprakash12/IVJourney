@@ -32,9 +32,13 @@ console.log(userDetails);
   try {
    
     const response = await axios.post(`http://${IP}/api/select-package`, {
-      userId: use,
+      userId: userDetails._id, // ✅ Using correct user ID
+      fullName: userDetails.fullName, // Optional: Add user's name
+      email: userDetails.email, // Optional: Add user's email
+      phone: userDetails.phone, // Optional: Add user's phone
       packageName: name,
       price: price,
+      createdAt: new Date().toISOString(),
     });
 
     if (response.status === 201) {
