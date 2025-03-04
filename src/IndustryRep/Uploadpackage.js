@@ -57,11 +57,17 @@ const AddPackageScreen = ({ navigation }) => {
   const handleSubmit = async () => {
     try {
       const formData = new FormData();
+
+      // Add Day X: prefix to each activity
+      const activitiesWithDay = form.activities.map(
+        (activity, index) => `Day ${index + 1}: ${activity}`
+      );
+
       formData.append("packageName", form.packageName);
       formData.append("description", form.description);
       formData.append("duration", form.duration);
-      formData.append("price", form.price.toString()); // Ensure price is sent as a string
-      formData.append("activities", JSON.stringify(form.activities)); // Convert activities to JSON string
+      formData.append("price", form.price.toString());
+      formData.append("activities", JSON.stringify(activitiesWithDay)); // Add prefixed activities
       formData.append("inclusions", form.inclusions);
       formData.append("instructions", form.instructions);
 
@@ -99,7 +105,6 @@ const AddPackageScreen = ({ navigation }) => {
       alert("An error occurred while adding the package.");
     }
   };
-
   return (
     <View className="flex-1 bg-gray-100">
       <ScrollView className="p-6">
@@ -143,26 +148,28 @@ const AddPackageScreen = ({ navigation }) => {
 
             <Text className="text-gray-700 mb-2 font-bold">Activities</Text>
             {form.activities.map((activity, index) => (
-              <View key={index} className="flex-row items-center mb-2">
-                <TextInput
-                  className="border p-2 rounded-lg flex-1"
-                  value={activity}
-                  placeholder={`Activity for Day ${index + 1}`}
-                  onChangeText={(text) => {
-                    const newActivities = [...form.activities];
-                    newActivities[index] = `Day ${index + 1}: ${text}`;
-                    setForm({ ...form, activities: newActivities });
-                  }}
-                />
-                <TouchableOpacity
-                  onPress={() => removeActivityField(index)}
-                  className="ml-2 p-2 bg-red-500 rounded-lg"
-                >
-                  <Ionicons name="trash" size={20} color="white" />
-                </TouchableOpacity>
-              </View>
-            ))}
-
+  <View key={index} className="mb-2">
+    <Text className="text-gray-700 mb-1">Day {index + 1}</Text>
+    <View className="flex-row items-center">
+      <TextInput
+        className="border p-2 rounded-lg flex-1"
+        value={activity}
+        placeholder="Enter activity"
+        onChangeText={(text) => {
+          const newActivities = [...form.activities];
+          newActivities[index] = text; // Save the activity without prefix
+          setForm({ ...form, activities: newActivities });
+        }}
+      />
+      <TouchableOpacity
+        onPress={() => removeActivityField(index)}
+        className="ml-2 p-2 bg-red-500 rounded-lg"
+      >
+        <Ionicons name="trash" size={20} color="white" />
+      </TouchableOpacity>
+    </View>
+  </View>
+))}
             <TouchableOpacity
               onPress={addActivityField}
               className="flex-row items-center p-2 bg-blue-500 rounded-lg mb-4"
