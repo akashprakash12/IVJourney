@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Image,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,7 +31,7 @@ const AddPackageScreen = ({ navigation }) => {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      alert("Permission required to access media library");
+      Alert.alert("Permission required to access media library");
       return;
     }
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -89,14 +90,14 @@ const AddPackageScreen = ({ navigation }) => {
       );
 
       if (response.status === 201) {
-        alert("Package added successfully!");
+       Alert.alert("Package added successfully!");
         navigation.navigate("Home");
       } else {
-        alert(`Failed to add package: ${response.data.error}`);
+       Alert.alert(`Failed to add package: ${response.data.error}`);
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("An error occurred while adding the package.");
+      Alert.alert("An error occurred while adding the package.");
     }
   };
 

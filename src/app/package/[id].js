@@ -7,13 +7,14 @@ import {
   Pressable,
   SafeAreaView,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemeContext } from "../../../context/ThemeContext";
 import { IP } from "@env";
 import { AuthContext } from "../../../context/Authcontext";
-
+import axios from 'axios';
 
 
 const DetailSection = ({ title, children, textColor }) => {
@@ -42,13 +43,13 @@ console.log(userDetails);
     });
 
     if (response.status === 201) {
-      alert("Package Selected Successfully!");
+     Alert.alert("Package Selected Successfully!");
     } else {
-      alert(`Error: ${response.data.message}`);
+     Alert.alert(`Error: ${response.data.message}`);
     }
   } catch (error) {
     console.error("Error selecting package:", error);
-    alert("Failed to select package. Please try again.");
+   Alert.alert("Failed to select package. Please try again.");
   }
 };
 
