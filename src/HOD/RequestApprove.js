@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { WebView } from "react-native-webview";
 import { printToFileAsync } from "expo-print";
 import axios from "axios";
@@ -19,7 +25,9 @@ export default function PDFPreview() {
   // 🔹 Fetch student requests
   const fetchStudentRequests = async () => {
     try {
-      const response = await axios.get(`http://${IP}:5000/api/requests/students`);
+      const response = await axios.get(
+        `http://${IP}:5000/api/requests/students`
+      );
       setStudentRequests(response.data);
     } catch (error) {
       console.error("Error fetching student requests:", error);
@@ -31,7 +39,11 @@ export default function PDFPreview() {
     if (!userId) return;
     try {
       setLoading(true);
-      const response = await axios.get(`http://${IP}:5000/api/request-details/${userId}`);
+      const response = await axios.get(
+        `http://${IP}:5000/api/request-details/${userId}`
+      );
+      console.log(response.data.status);
+
       await generatePDF(response.data);
     } catch (error) {
       console.error("Error fetching request details:", error);
@@ -39,17 +51,48 @@ export default function PDFPreview() {
       setLoading(false);
     }
   };
+
+
   const updateStatus = async (userId, status) => {
     try {
       setLoading(true);
-      console.log(userId);
-      console.log(status);
-      
-      
-      await axios.put(`http://${IP}:5000/api/request-status/${userId}`, { status });
-      fetchStudentRequests(); // 🔄 Refresh list after update
+  
+      // Update the status in the backend
+      await axios.put(`http://${IP}:5000/api/request-status/${userId}`, {
+        status,
+      });
+
+      // Update the local state immediately
+      setStudentRequests((prevRequests) =>
+        prevRequests.map((request) =>
+          request.Obj_id._id === userId
+            ? { ...request, Obj_id: { ...request.Obj_id, status } }
+            : request
+        )
+      );
     } catch (error) {
       console.error("Error updating status:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteRequest = async (userId) => {
+    try {
+      setLoading(true);
+      console.log(userId);
+      
+      await axios.delete(`http://${IP}:5000/api/request-status/${userId}`,{
+        userId
+      });
+     
+
+      // Update the local state by removing the deleted request
+      setStudentRequests((prevRequests) =>
+        prevRequests.filter((request) => request.Obj_id._id !== userId)
+      );
+    } catch (error) {
+      console.error("Error deleting request:", error);
     } finally {
       setLoading(false);
     }
@@ -58,7 +101,7 @@ export default function PDFPreview() {
   // 🔹 Generate PDF & Save
   const generatePDF = async (data) => {
     if (!data) return;
-    
+
     const html = `
       <!DOCTYPE html>
 <html lang="en">
@@ -205,9 +248,13 @@ export default function PDFPreview() {
         </table>
         
         <div class="section">
-            <p><strong>Modes of transport involved (tick one or more):</strong> ${data.transport}</p>
+            <p><strong>Modes of transport involved (tick one or more):</strong> ${
+              data.transport
+            }</p>
             <p><strong>Name, address & Phone No. of cab/transport operator (for road journeys):</strong></p>
-            <p><strong>Names and Phone Nos. of driver/s (for road journeys):</strong>${data.driverPhoneNumber}</p>
+            <p><strong>Names and Phone Nos. of driver/s (for road journeys):</strong>${
+              data.driverPhoneNumber
+            }</p>
         </div>
         
         <div class="section">
@@ -255,7 +302,14 @@ export default function PDFPreview() {
 
   return (
     <View style={{ flex: 1, padding: 20, backgroundColor: "white" }}>
-      <Text style={{ fontSize: 20, fontWeight: "bold", textAlign: "center", color: "#F22E63" }}>
+      <Text
+        style={{
+          fontSize: 20,
+          fontWeight: "bold",
+          textAlign: "center",
+          color: "#F22E63",
+        }}
+      >
         Student Requests
       </Text>
 
@@ -279,31 +333,62 @@ export default function PDFPreview() {
                 {request.Obj_id.fullName}
               </Text>
               <Text style={{ color: "gray" }}>{request.Obj_id.email}</Text>
-               {/* Status Buttons */}
-               <View style={{ flexDirection: "row", marginTop: 10, justifyContent: "space-between" }}>
+              {/* Status Buttons */}
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  marginTop: 10,
+                  justifyContent: "space-between",
+                }}
+              >
                 <TouchableOpacity
                   onPress={() => updateStatus(request.Obj_id._id, "Approved")}
-                  style={{ backgroundColor: "#4CAF50", padding: 10, borderRadius: 5 }}
+                  style={{
+                    backgroundColor: "#4CAF50",
+                    padding: 10,
+                    borderRadius: 5,
+                  }}
                 >
                   <Text style={{ color: "white" }}>Approve</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => updateStatus(request.Obj_id._id, "Rejected")}
-                  style={{ backgroundColor: "#f44336", padding: 10, borderRadius: 5 }}
+                  style={{
+                    backgroundColor: "#f44336",
+                    padding: 10,
+                    borderRadius: 5,
+                  }}
                 >
                   <Text style={{ color: "white" }}>Reject</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => updateStatus(request.Obj_id._id, "Pending")}
-                  style={{ backgroundColor: "#FFC107", padding: 10, borderRadius: 5 }}
+                  style={{
+                    backgroundColor: "#FFC107",
+                    padding: 10,
+                    borderRadius: 5,
+                  }}
                 >
                   <Text style={{ color: "white" }}>Pending</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => deleteRequest(request.Obj_id._id)}
+                  style={{
+                    backgroundColor: "#FF0000",
+                    padding: 10,
+                    borderRadius: 5,
+                  }}
+                >
+                  <Text style={{ color: "white" }}>Delete</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ))
         ) : (
-          <Text style={{ textAlign: "center", color: "gray" }}>No requests found.</Text>
+          <Text style={{ textAlign: "center", color: "gray" }}>
+            No requests found.
+          </Text>
         )}
       </ScrollView>
 

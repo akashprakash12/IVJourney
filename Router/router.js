@@ -13,6 +13,7 @@ const {
   StudentModel,
   Request,
   Profile,
+  Vote
 } = require("../models/Items"); // Import the Item model
 const multer = require("multer");
 const path = require("path");
@@ -144,6 +145,8 @@ router.post("/packages", upload.single("image"), async (req, res) => {
       inclusions: inclusions,
       instructions:req.body.instructions,
       image: req.file ? req.file.path : null,
+      votes: 0, // Initialize votes to 0
+      votePercentage: 0, 
     });
 
     console.log("New Package:", newPackage);
@@ -175,6 +178,42 @@ router.get("/packages", async (_req, res) => {
   } catch (error) {
     console.error("Error fetching packages:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Endpoint to handle voting
+router.post("/packages/vote", async (req, res) => {
+  const { studentId, packageId } = req.body;
+
+  try {
+    // Check if the student has already voted
+    const existingVote = await Vote.findOne({ studentId });
+    if (existingVote) {
+      return res.status(400).json({ message: "You have already voted." });
+    }
+
+    // Save the vote
+    const newVote = new Vote({ studentId, packageId });
+    await newVote.save();
+
+    // Update the package's vote count
+    const package = await Package.findById(packageId);
+    package.votes += 1;
+    await package.save();
+
+    // Calculate vote percentages for all packages
+    const allPackages = await Package.find();
+    const totalVotes = allPackages.reduce((sum, pkg) => sum + pkg.votes, 0);
+
+    for (const pkg of allPackages) {
+      pkg.votePercentage = totalVotes > 0 ? (pkg.votes / totalVotes) * 100 : 0;
+      await pkg.save();
+    }
+
+    res.status(200).json({ message: "Vote recorded successfully." });
+  } catch (error) {
+    console.error("Error recording vote:", error);
+    res.status(500).json({ message: "Internal server error." });
   }
 });
 router.post("/register", async (req, res) => {
@@ -447,6 +486,26 @@ router.post("/select-package", async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 });
+
+router.delete("/request-status/:id", async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    console.log(requestId);
+    
+    // Find and delete the request
+    const deletedRequest = await Request.findOneAndDelete({ Obj_id: new mongoose.Types.ObjectId(requestId) });
+
+    if (!deletedRequest) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+    
+    res.status(200).json({ message: "Request deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting request:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 
 // Export the router
 module.exports = router;

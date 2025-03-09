@@ -29,11 +29,16 @@ const PackageSchema = new mongoose.Schema(
     inclusions: { type: [String], required: true }, 
     instructions:{type:String,require:true},// ✅ Should be an array, not a string
     image: { type: String },
-     
+    votes: { type: Number, default: 0 }, // Total votes for this package
+    votePercentage: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
-
+const voteSchema = new mongoose.Schema({
+  studentId: { type: String, required: true },
+  packageId: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
 const RegisterSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
@@ -108,6 +113,7 @@ const PackageSelection = new mongoose.Schema({
 module.exports = {
   Item: mongoose.model("Item", ItemSchema), // Export the Item model
   Package: mongoose.model("Package", PackageSchema),
+  Vote:mongoose.model("Vote", voteSchema),
   Register: mongoose.model("Register", RegisterSchema),
   Request: mongoose.model("Request", RequestSchema),
   StudentModel: mongoose.model("StudentModel", StudentSchema),

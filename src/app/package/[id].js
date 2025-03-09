@@ -4,7 +4,6 @@ import {
   Text,
   Image,
   ScrollView,
-  Pressable,
   SafeAreaView,
   TouchableOpacity,
   Alert,
@@ -14,8 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ThemeContext } from "../../../context/ThemeContext";
 import { IP } from "@env";
 import { AuthContext } from "../../../context/Authcontext";
-import axios from 'axios';
-
+import axios from "axios";
 
 const DetailSection = ({ title, children, textColor }) => {
   if (!children) return null;
@@ -29,9 +27,8 @@ const DetailSection = ({ title, children, textColor }) => {
 
 const handlePackageSelection = async () => {
   const { userDetails, setUserDetails } = useContext(AuthContext);
-console.log(userDetails);
+  console.log(userDetails);
   try {
-   
     const response = await axios.post(`http://${IP}/api/select-package`, {
       userId: userDetails._id, // ✅ Using correct user ID
       fullName: userDetails.fullName, // Optional: Add user's name
@@ -43,16 +40,15 @@ console.log(userDetails);
     });
 
     if (response.status === 201) {
-     Alert.alert("Package Selected Successfully!");
+      Alert.alert("Package Selected Successfully!");
     } else {
-     Alert.alert(`Error: ${response.data.message}`);
+      Alert.alert(`Error: ${response.data.message}`);
     }
   } catch (error) {
     console.error("Error selecting package:", error);
-   Alert.alert("Failed to select package. Please try again.");
+    Alert.alert("Failed to select package. Please try again.");
   }
 };
-
 
 export default function PackageDetails() {
   const navigation = useNavigation();
@@ -77,42 +73,50 @@ export default function PackageDetails() {
     inclusions = [], // ✅ Ensures inclusions is always an array
     instructions = "No instructions available.",
   } = route.params || {};
+
   return (
     <SafeAreaView className={`flex-1 ${bgColor}`}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View className={`py-6 px-4 flex-row items-center ${bgColor}`}>
-          
-          <Text className={`text-xl font-bold flex-1 text-center ${textColor}`}>{name}</Text>
+          <Text className={`text-2xl font-bold flex-1 text-center ${textColor}`}>
+            {name}
+          </Text>
         </View>
 
         {/* Image */}
-        <Image
-          source={{ uri: image }}
-          className="w-full h-64 rounded-2xl mx-4 shadow-lg"
-          resizeMode="cover"
-        />
+        <View className="px-4">
+          <Image
+            source={{ uri: image }}
+            className="w-full h-72 rounded-2xl shadow-lg"
+            resizeMode="cover"
+          />
+        </View>
 
         {/* Details Section */}
         <View className={`p-6 rounded-t-3xl mt-4 ${bgColor}`}>
+          {/* Price Badge */}
           <View className="items-center mb-6">
-            <Text className="bg-[#F22E63] text-black text-lg font-bold px-6 py-2 rounded-full">
+            <Text className="bg-[#F22E63] text-white text-lg font-bold px-6 py-2 rounded-full">
               {price}₹ Per Person
             </Text>
           </View>
 
+          {/* Description */}
           <DetailSection title="📌 Description" textColor={textColor}>
             <Text className={`${secondaryTextColor} text-base leading-relaxed`}>
               {description}
             </Text>
           </DetailSection>
 
+          {/* Duration */}
           <DetailSection title="⏳ Duration" textColor={textColor}>
             <Text className={`text-lg font-medium ${highlightColor}`}>
               {duration}
             </Text>
           </DetailSection>
 
+          {/* Rating */}
           <DetailSection title="⭐ Rating" textColor={textColor}>
             <View className="flex-row">
               {Array.from({ length: 5 }).map((_, index) => (
@@ -130,6 +134,7 @@ export default function PackageDetails() {
             </View>
           </DetailSection>
 
+          {/* Inclusions */}
           <DetailSection title="🎁 Package Inclusions" textColor={textColor}>
             {Array.isArray(inclusions) && inclusions.length > 0 ? (
               inclusions.map((item, index) => (
@@ -150,6 +155,7 @@ export default function PackageDetails() {
             )}
           </DetailSection>
 
+          {/* Activities */}
           <DetailSection title="📅 Daily Activities" textColor={textColor}>
             {activities.length ? (
               activities.map((activity, index) => (
@@ -172,6 +178,7 @@ export default function PackageDetails() {
             )}
           </DetailSection>
 
+          {/* Instructions */}
           <DetailSection title="📝 Instructions" textColor={textColor}>
             <Text className={secondaryTextColor}>
               {instructions || "No instructions available."}
