@@ -25,30 +25,6 @@ const DetailSection = ({ title, children, textColor }) => {
   );
 };
 
-const handlePackageSelection = async () => {
-  const { userDetails, setUserDetails } = useContext(AuthContext);
-  console.log(userDetails);
-  try {
-    const response = await axios.post(`http://${IP}/api/select-package`, {
-      userId: userDetails._id, // ✅ Using correct user ID
-      fullName: userDetails.fullName, // Optional: Add user's name
-      email: userDetails.email, // Optional: Add user's email
-      phone: userDetails.phone, // Optional: Add user's phone
-      packageName: name,
-      price: price,
-      createdAt: new Date().toISOString(),
-    });
-
-    if (response.status === 201) {
-      Alert.alert("Package Selected Successfully!");
-    } else {
-      Alert.alert(`Error: ${response.data.message}`);
-    }
-  } catch (error) {
-    console.error("Error selecting package:", error);
-    Alert.alert("Failed to select package. Please try again.");
-  }
-};
 
 export default function PackageDetails() {
   const navigation = useNavigation();
@@ -187,17 +163,7 @@ export default function PackageDetails() {
         </View>
       </ScrollView>
 
-      {/* Floating Button */}
-      <View className="absolute bottom-4 left-4 right-4 flex-row justify-center">
-        <TouchableOpacity
-          className="bg-[#F22E63] py-3 px-6 rounded-full shadow-md"
-          onPress={handlePackageSelection}
-        >
-          <Text className="text-white text-lg font-semibold">
-            Select Package
-          </Text>
-        </TouchableOpacity>
-      </View>
+   
     </SafeAreaView>
   );
 }

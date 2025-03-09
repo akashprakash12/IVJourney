@@ -10,11 +10,12 @@ import {
   Alert,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { IP } from "@env";
 import axios from "axios";
 import packageData from "../../assets/db.json";
+import FormData from 'form-data';
 
 const AddPackageScreen = ({ navigation }) => {
   const [form, setForm] = useState({

@@ -10,7 +10,6 @@ const saltRounds = 10;
 const {
   Register,
   Package,
-  StudentModel,
   Request,
   Profile,
   Vote
@@ -20,9 +19,6 @@ const path = require("path");
 const fs = require("fs");
 const IP = process.env.IP;
 console.log(IP);
-
-// const storage = multer.memoryStorage(); // Stores file in memory, or use diskStorage for saving to disk
-// const upload = multer({ storage: storage });
 
 const uploadDir = path.join(__dirname, "../uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -197,9 +193,9 @@ router.post("/packages/vote", async (req, res) => {
     await newVote.save();
 
     // Update the package's vote count
-    const package = await Package.findById(packageId);
-    package.votes += 1;
-    await package.save();
+    const pkg = await Package.findById(packageId);
+    pkg.votes += 1;
+    await pkg.save();
 
     // Calculate vote percentages for all packages
     const allPackages = await Package.find();
@@ -470,22 +466,6 @@ router.put("/request-status/:requestId", async (req, res) => {
   }
 });
 
-router.post("/select-package", async (req, res) => {
-  try {
-    const { userId, packageName, price } = req.body;
-
-    if (!userId || !packageName || !price) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    const newSelection = new PackageSelectionModel({ userId, packageName, price });
-    await newSelection.save();
-
-    res.status(201).json({ message: "Package selection saved successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
 
 router.delete("/request-status/:id", async (req, res) => {
   try {

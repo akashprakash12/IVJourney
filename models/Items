@@ -80,12 +80,12 @@ const RequestSchema = new mongoose.Schema({
   status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" }
 });
 
-const StudentSchema = new mongoose.Schema({
-  studentID: { type: String, required: true, unique: true },
-  fullName: { type: String, required: true },
-  department: { type: String, required: true },
-  studentRep: { type: String, required: true }, // Student Representative
-});
+// const StudentSchema = new mongoose.Schema({
+//   studentID: { type: String, required: true, unique: true },
+//   fullName: { type: String, required: true },
+//   department: { type: String, required: true },
+//   studentRep: { type: String, required: true }, // Student Representative
+// });
 
 const ProfileSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -100,12 +100,7 @@ const ProfileSchema = new mongoose.Schema({
 });
 
 
-const PackageSelection = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  packageName: String,
-  price: String,
-  timestamp: { type: Date, default: Date.now },
-});
+
 
 
 
@@ -116,7 +111,7 @@ module.exports = {
   Vote:mongoose.model("Vote", voteSchema),
   Register: mongoose.model("Register", RegisterSchema),
   Request: mongoose.model("Request", RequestSchema),
-  StudentModel: mongoose.model("StudentModel", StudentSchema),
+
   Profile: mongoose.model("Profile", ProfileSchema),
-  PackageSelectionModel:mongoose.model("PackageSelection", PackageSelection)
+
 };
