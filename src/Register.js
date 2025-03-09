@@ -153,13 +153,13 @@ export default function Register({ navigation }) {
             <View key={index} className="flex-row items-center border-b p-2 mb-4">
               {input.icon}
               <TextInput
-                placeholder={input.label}
-                placeholderTextColor="#777"
-                value={input.value}
-                onChangeText={input.setter}
-                keyboardType={input.keyboardType || "default"}
-                className="ml-3 flex-1 text-lg"
-              />
+  placeholder={input.label}
+  placeholderTextColor={isDarkMode ? "#DDD" : "#777"}
+  value={input.value}
+  onChangeText={input.setter}
+  keyboardType={input.keyboardType || "default"}
+  className={`ml-3 flex-1 text-lg ${isDarkMode ? "text-white" : "text-black"}`}
+/>
             </View>
           ))}
 
@@ -174,7 +174,7 @@ export default function Register({ navigation }) {
                   value={input.value}
                   onChangeText={input.setter}
                   secureTextEntry={!input.visible}
-                  className="text-lg w-full"
+                  className={`ml-3 flex-1 text-lg ${isDarkMode ? "text-white" : "text-black"}`}
                 />
                 <TouchableOpacity className="absolute right-4 top-3" onPress={() => input.setVisible(!input.visible)}>
                   {input.visible ? <EyeOff size={20} color="#777" /> : <Eye size={20} color="#777" />}
