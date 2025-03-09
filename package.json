@@ -9,7 +9,9 @@
     "web": "expo start --web",
     "server": "node src/server.js",
     "dev-server": "nodemon src/server.js",
-    "test": "echo \"No tests found\" && exit 0"
+    "test": "echo \"No tests found\" && exit 0",
+    "lint": "eslint .",
+    "prebuild": "npm run lint"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
@@ -63,8 +65,7 @@
     "react-native-paper": "^5.13.1",
     "react-native-pdf": "^6.7.7",
     "react-native-picker-select": "^9.3.1",
-    "react-native-print": "^0.11.0",
-    "react-native-reanimated": "^3.16.6",
+    "react-native-reanimated": "^3.17.1",
     "react-native-safe-area-context": "4.12.0",
     "react-native-screens": "~4.4.0",
     "react-native-share": "^12.0.9",
