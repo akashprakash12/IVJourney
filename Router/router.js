@@ -46,6 +46,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+router.get("/", (req, res) => {
+  res.send("Welcome to the IVJourney API!");
+});
 
 router.post("/Login", async (req, res) => {
   const { email, password } = req.body;
