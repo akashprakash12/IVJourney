@@ -20,10 +20,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 22 # Use your preferred Node.js version
+          node-version: 22 # Adjust Node.js version if needed
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps # FIXED
 
       - name: Run ESLint
         run: npx eslint . --fix
