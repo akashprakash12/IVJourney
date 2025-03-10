@@ -13,7 +13,7 @@ import { Eye, EyeOff } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import SvgImage from "../assets/image1.svg";
 import { ThemeContext } from "../context/ThemeContext"; // Import theme context
-import { IP } from "@env";
+import { IP,API_BASE_URL } from "@env";
 import { AuthContext } from "../context/Authcontext";
 
 
@@ -34,7 +34,7 @@ export default function Login({ navigation }) {
     try {
     
       const response = await axios.post(
-        `http://${IP}:5000/api/Login`,
+        `http://${API_BASE_URL}:5000/api/Login`,
         { email, password },
         { headers: { "Content-Type": "application/json" } } // Ensure JSON format
       );

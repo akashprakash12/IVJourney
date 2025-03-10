@@ -6,7 +6,11 @@ const itemRoutes = require('../Router/router'); // Import the routes
 const path = require("path");``
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: "*", // Allow all origins (replace with your React Native app's URL in production)
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
