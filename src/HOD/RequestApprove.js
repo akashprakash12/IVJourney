@@ -56,6 +56,17 @@ export default function PDFPreview() {
   const updateStatus = async (userId, status) => {
     try {
       setLoading(true);
+<<<<<<< HEAD
+      
+      // Update the status in the backend
+      await axios.put(`http://${IP}:5000/api/request-status/${userId}`, { status });
+  
+      // Update the local state immediately
+      setStudentRequests(prevRequests => 
+        prevRequests.map(request => 
+          request.Obj_id._id === userId 
+            ? { ...request, Obj_id: { ...request.Obj_id, status } } 
+=======
   
       // Update the status in the backend
       await axios.put(`http://${IP}:5000/api/request-status/${userId}`, {
@@ -67,6 +78,7 @@ export default function PDFPreview() {
         prevRequests.map((request) =>
           request.Obj_id._id === userId
             ? { ...request, Obj_id: { ...request.Obj_id, status } }
+>>>>>>> 48363e16221e26c9081b856dfac5b272da926fcd
             : request
         )
       );
