@@ -34,7 +34,7 @@ export default function Login({ navigation }) {
     try {
     
       const response = await axios.post(
-        `http://${API_BASE_URL}/api/Login`,
+        `http://${IP}/api/Login`,
         { email, password },
         { headers: { "Content-Type": "application/json" } } // Ensure JSON format
       );
