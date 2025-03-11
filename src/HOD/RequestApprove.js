@@ -42,12 +42,18 @@ export default function PDFPreview() {
   const updateStatus = async (userId, status) => {
     try {
       setLoading(true);
-      console.log(userId);
-      console.log(status);
       
-      
+      // Update the status in the backend
       await axios.put(`http://${IP}:5000/api/request-status/${userId}`, { status });
-      fetchStudentRequests(); // 🔄 Refresh list after update
+  
+      // Update the local state immediately
+      setStudentRequests(prevRequests => 
+        prevRequests.map(request => 
+          request.Obj_id._id === userId 
+            ? { ...request, Obj_id: { ...request.Obj_id, status } } 
+            : request
+        )
+      );
     } catch (error) {
       console.error("Error updating status:", error);
     } finally {
