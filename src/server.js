@@ -18,10 +18,6 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the "uploads" directory
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-// Root route
-app.get("/", (req, res) => {
-  res.send("Welcome to the IVJourney API!");
-});
 
 // Use the routes
 app.use("/api", itemRoutes); // All item-related routes will have the `/api` prefix

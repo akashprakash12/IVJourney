@@ -144,20 +144,34 @@ export default function RequestForm({ navigation }) {
   
 
 
-
   const fetchPackages = async () => {
     try {
       const response = await axios.get(`http://${IP}:5000/api/packages`);
+  
       if (!Array.isArray(response.data)) {
         throw new Error("Invalid API response format. Expected an array.");
       }
+  
+      // Sort packages by votes in descending order
+      const sortedPackages = response.data.sort((a, b) => b.votes - a.votes);
 
+      // Get the most voted package
+      const mostVotedPackage = sortedPackages[0];
+  
+      if (mostVotedPackage) {
+        console.log("Most Voted Package:", mostVotedPackage.packageName);
+      } else {
+        console.log("No packages available.");
+      }
+  
+      // Map data for state update
       const packageData = response.data.map((pkg) => ({
-        label: pkg.label, // Use correct keys
+        label: pkg.label, // Ensure correct keys
         value: pkg.value,
       }));
-
+  
       setIndustries(packageData); // Update state
+  
     } catch (error) {
       console.error("Error fetching packages:", error);
       Alert.alert("Error", "Failed to load packages.");
@@ -165,7 +179,7 @@ export default function RequestForm({ navigation }) {
       setLoading(false);
     }
   };
-
+  
   // if (loading) {
   //   return (
   //     <View className="flex-1 justify-center items-center">

@@ -7,10 +7,11 @@ import {
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+
 import { Image } from "react-native";
 import { ThemeContext } from "./context/ThemeContext";
 import { AuthContext } from "./context/Authcontext"; // Ensure correct import
-
+import { Menu, Divider } from "react-native-paper";
 // Import Screens
 import Login from "./src/Login";
 import Register from "./src/Register";
@@ -26,6 +27,9 @@ import Guiconponet from "./src/Splashscreens/Guiconponet";
 import SplashScreen from "./src/Splashscreens/LoadingScreen";
 import RequestForm from "./src/Admin/RequestForm";
 import PDFPreview from "./src/HOD/RequestApprove";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+
 
 // Icons
 import FontAwesome from "@expo/vector-icons/FontAwesome";
@@ -35,13 +39,46 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 // Import logo
 import Logo from "./assets/icone.jpg";
 import StudentRequist from "./src/Student/StudentRequist";
+import { TouchableOpacity } from "react-native";
+
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+function HeaderMenu({ navigation, logout }) {
+  const [menuVisible, setMenuVisible] = React.useState(false);
+  const openMenu = () => setMenuVisible(true);
+  const closeMenu = () => setMenuVisible(false);
+
+  return (
+    <Menu
+      visible={menuVisible}
+      onDismiss={closeMenu}
+      anchor={
+        <TouchableOpacity onPress={openMenu} style={{ marginRight: 15 }}>
+          <MaterialIcons name="more-vert" size={24} color="black" />
+        </TouchableOpacity>
+      }
+    >
+      <Menu.Item onPress={() => console.log("Profile Clicked")} title="Profile" />
+      <Divider />
+      <Menu.Item
+        onPress={() => {
+          logout(); // Clear user session
+          closeMenu(); // Close menu
+          navigation.replace("Login"); // Navigate to Login
+        }}
+        title="Logout"
+      />
+    </Menu>
+  );
+}
+
 export default function AppNavigation() {
   const { theme } = useContext(ThemeContext);
   const isDarkMode = theme === "dark" ? DarkTheme : DefaultTheme;
+  const { userDetails, logout } = useContext(AuthContext); // Get logout function
+
 
   return (
     <NavigationContainer theme={isDarkMode}>
@@ -73,7 +110,7 @@ export default function AppNavigation() {
         <Stack.Screen
           name="Home"
           component={TabNavigator}
-          options={{
+          options={({ navigation }) => ({
             headerTitle: () => (
               <Image
                 source={Logo}
@@ -81,13 +118,13 @@ export default function AppNavigation() {
                 resizeMode="cover"
               />
             ),
-          }}
+            headerRight: () => <HeaderMenu navigation={navigation} logout={logout} />,
+          })}
         />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
-
 // 🔹 Define the Tab Navigator with Dynamic Role-Based Tabs
 function TabNavigator() {
   const { theme } = useContext(ThemeContext);
