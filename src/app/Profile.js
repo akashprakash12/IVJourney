@@ -14,6 +14,8 @@ import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
 import { IP } from "@env"; // Your backend IP
 import { AuthContext } from "../../context/Authcontext";
+import FormData from 'form-data';
+
 
 export default function ProfileScreen({ navigation }) {
   const { userDetails, setUserDetails } = useContext(AuthContext); // Get user details and setter function
