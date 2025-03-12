@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import {
   View,
   Text,
@@ -6,14 +6,10 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemeContext } from "../../../context/ThemeContext";
-import { IP } from "@env";
-import { AuthContext } from "../../../context/Authcontext";
-import axios from "axios";
 
 const DetailSection = ({ title, children, textColor }) => {
   if (!children) return null;
@@ -25,6 +21,35 @@ const DetailSection = ({ title, children, textColor }) => {
   );
 };
 
+const ReviewItem = ({ review }) => {
+  const { user, rating, comment, date } = review;
+
+  return (
+    <View className="mb-4">
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center">
+          <Image
+            source={{ uri: user.avatar }}
+            className="w-10 h-10 rounded-full"
+          />
+          <Text className="ml-3 font-medium text-gray-800">{user.name}</Text>
+        </View>
+        <View className="flex-row">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Ionicons
+              key={index}
+              name={index < rating ? "star" : "star-outline"}
+              size={16}
+              color={index < rating ? "#FFD700" : "#C0C0C0"}
+            />
+          ))}
+        </View>
+      </View>
+      <Text className="mt-2 text-gray-600">{comment}</Text>
+      <Text className="mt-1 text-sm text-gray-500">{date}</Text>
+    </View>
+  );
+};
 
 export default function PackageDetails() {
   const navigation = useNavigation();
@@ -46,9 +71,35 @@ export default function PackageDetails() {
     rating = 0,
     image = "",
     activities = [],
-    inclusions = [], // ✅ Ensures inclusions is always an array
+    inclusions = [],
     instructions = "No instructions available.",
   } = route.params || {};
+
+  const [showAllReviews, setShowAllReviews] = useState(false);
+
+  // Sample reviews data
+  const reviews = [
+    {
+      user: { name: "John Doe", avatar: "https://via.placeholder.com/150" },
+      rating: 4,
+      comment: "Great package! Had a wonderful time.",
+      date: "2023-10-01",
+    },
+    {
+      user: { name: "Jane Smith", avatar: "https://via.placeholder.com/150" },
+      rating: 5,
+      comment: "Amazing experience! Highly recommended.",
+      date: "2023-09-25",
+    },
+    {
+      user: { name: "Alice Johnson", avatar: "https://via.placeholder.com/150" },
+      rating: 3,
+      comment: "It was okay, but could be better.",
+      date: "2023-09-20",
+    },
+  ];
+
+  const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
   return (
     <SafeAreaView className={`flex-1 ${bgColor}`}>
@@ -160,10 +211,25 @@ export default function PackageDetails() {
               {instructions || "No instructions available."}
             </Text>
           </DetailSection>
+
+          {/* Reviews Section */}
+          <DetailSection title="⭐ Customer Reviews" textColor={textColor}>
+            {displayedReviews.map((review, index) => (
+              <ReviewItem key={index} review={review} />
+            ))}
+            {reviews.length > 2 && (
+              <TouchableOpacity
+                onPress={() => setShowAllReviews(!showAllReviews)}
+                className="mt-4"
+              >
+                <Text className={`text-center ${highlightColor} font-semibold`}>
+                  {showAllReviews ? "Show Less" : "See All Reviews"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </DetailSection>
         </View>
       </ScrollView>
-
-   
     </SafeAreaView>
   );
 }
