@@ -18,7 +18,6 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const IP = process.env.IP;
-console.log(IP);
 
 const uploadDir = path.join(__dirname, "../uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -112,7 +111,7 @@ router.post("/packages", upload.single("image"), async (req, res) => {
     if (existingPackage) {
       // If a new image is uploaded, delete the old image
       if (req.file && existingPackage.image) {
-        const oldImagePath = path.join(__dirname, "../", existingPackage.image);
+        const oldImagePath = path.join(__dirname, "../uploads", existingPackage.image);
         if (fs.existsSync(oldImagePath)) {
           fs.unlinkSync(oldImagePath); // Delete old image
         }
@@ -124,10 +123,10 @@ router.post("/packages", upload.single("image"), async (req, res) => {
       existingPackage.price = price;
       existingPackage.activities = activities;
       existingPackage.inclusions = inclusions;
-      existingPackage.instructions=req.body.instructions;
+      existingPackage.instructions = req.body.instructions;
       
       if (req.file) {
-        existingPackage.image = req.file.path; // Update image only if new file is uploaded
+        existingPackage.image = path.basename(req.file.path); // Save only the filename
       }
 
       await existingPackage.save();
@@ -142,8 +141,8 @@ router.post("/packages", upload.single("image"), async (req, res) => {
       price: price,
       activities: activities,
       inclusions: inclusions,
-      instructions:req.body.instructions,
-      image: req.file ? req.file.path : null,
+      instructions: req.body.instructions,
+      image: req.file ? path.basename(req.file.path) : null, // Save only the filename
       votes: 0, // Initialize votes to 0
       votePercentage: 0, 
     });
@@ -157,7 +156,6 @@ router.post("/packages", upload.single("image"), async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
 router.get("/packages", async (_req, res) => {
   try {
     const packages = await Package.find();
@@ -166,12 +164,16 @@ router.get("/packages", async (_req, res) => {
       return res.status(404).json({ error: "No packages available" });
     }
 
-    const formattedPackages = packages.map((pkg) => ({
-      label: pkg.packageName, // ✅ Name for dropdowns
-      value: pkg._id, // ✅ Unique identifier
-      ...pkg._doc, // ✅ Include other fields
-      image: pkg.image ? `http://${IP}:5000/uploads/${path.basename(pkg.image)}` : null, // ✅ Send correct image URL
-    }));
+    const formattedPackages = packages.map((pkg) => {
+      const imageUrl = pkg.image ? `http://${IP}:5000/uploads/${pkg.image}` : null;
+      console.log("Image URL:", imageUrl); // Debugging
+      return {
+        label: pkg.packageName,
+        value: pkg._id,
+        ...pkg._doc,
+        image: imageUrl,
+      };
+    });
 
     res.status(200).json(formattedPackages);
   } catch (error) {
@@ -179,7 +181,6 @@ router.get("/packages", async (_req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 // Endpoint to handle voting
 router.post("/packages/vote", async (req, res) => {
   const { studentId, packageId } = req.body;

@@ -188,6 +188,7 @@ export default function HomeScreen() {
 
 const PackageCard = ({ item, isDark }) => {
   const navigation = useNavigation();
+console.log(item.image);
 
   return (
     <Pressable  
