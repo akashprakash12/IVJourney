@@ -1,46 +1,64 @@
-import React, { useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
-import { PieChart } from "react-native-chart-kit"; // For circular representation
+import { PieChart } from "react-native-chart-kit";
+import { AuthContext } from "../../context/Authcontext";
+import axios from "axios";
+import { IP } from "@env";
 
 export default function Status() {
-  const [girls, setGirls] = useState(60); // Number of girls
-  const [boys, setBoys] = useState(40); // Number of boys
-  const [status, setStatus] = useState("Pending"); // Status of the requested letter
+  const { userDetails } = useContext(AuthContext);
+  const [studentID, setStudentID] = useState(userDetails?.studentID || "");
+  const [votedUsers, setVotedUsers] = useState([]);
+  const [genderRatio, setGenderRatio] = useState({ maleCount: 0, femaleCount: 0 });
+  const [status, setStatus] = useState("Pending");
 
-  const total = girls + boys;
-  const girlsPercentage = (girls / total) * 100;
-  const boysPercentage = (boys / total) * 100;
+  useEffect(() => {
+    const fetchVotes = async () => {
+      try {
+        const response = await axios.get(`http://${IP}:5000/api/votes-details`); // Replace with actual backend URL
+        setVotedUsers(response.data.votedUsers);
+        setGenderRatio(response.data.genderRatio);
+      } catch (error) {
+        console.error("Error fetching votes:", error);
+      }
+    };
+
+    fetchVotes();
+  }, []);
+
+  const total = genderRatio.maleCount + genderRatio.femaleCount;
+  const girlsPercentage = total > 0 ? (genderRatio.femaleCount / total) * 100 : 0;
+  const boysPercentage = total > 0 ? (genderRatio.maleCount / total) * 100 : 0;
 
   // Data for the pie chart
   const data = [
     {
       name: "Girls",
-      population: girls,
+      population: genderRatio.femaleCount,
       color: "#FF69B4", // Pink for girls
       legendFontColor: "#333",
       legendFontSize: 15,
     },
     {
       name: "Boys",
-      population: boys,
+      population: genderRatio.maleCount,
       color: "#87CEEB", // Blue for boys
       legendFontColor: "#333",
       legendFontSize: 15,
     },
   ];
 
-  // Determine status color
   const statusColor = {
-    Approved: "#4CAF50", // Green for Approved
-    Rejected: "#F44336", // Red for Rejected
-    Pending: "#FFC107", // Yellow for Pending
+    Approved: "#4CAF50",
+    Rejected: "#F44336",
+    Pending: "#FFC107",
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Students List</Text>
 
-      {/* Circular Representation (Pie Chart) */}
+      {/* Pie Chart */}
       <PieChart
         data={data}
         width={Dimensions.get("window").width - 40}
@@ -55,30 +73,25 @@ export default function Status() {
         backgroundColor="transparent"
         paddingLeft="15"
         absolute
-        hasLegend={true} // Show legend
+        hasLegend={true}
       />
 
       {/* Labels */}
       <View style={styles.labelsContainer}>
         <View style={styles.label}>
           <View style={[styles.colorBox, { backgroundColor: "#FF69B4" }]} />
-          <Text style={styles.labelText}>Girls: {girls} ({girlsPercentage.toFixed(1)}%)</Text>
+          <Text style={styles.labelText}>Girls: {genderRatio.femaleCount} ({girlsPercentage.toFixed(1)}%)</Text>
         </View>
         <View style={styles.label}>
           <View style={[styles.colorBox, { backgroundColor: "#87CEEB" }]} />
-          <Text style={styles.labelText}>Boys: {boys} ({boysPercentage.toFixed(1)}%)</Text>
+          <Text style={styles.labelText}>Boys: {genderRatio.maleCount} ({boysPercentage.toFixed(1)}%)</Text>
         </View>
       </View>
 
       {/* Status Section */}
       <View style={styles.statusContainer}>
         <Text style={styles.statusTitle}>Request Status</Text>
-        <View
-          style={[
-            styles.statusBox,
-            { backgroundColor: statusColor[status] }, // Dynamic status color
-          ]}
-        >
+        <View style={[styles.statusBox, { backgroundColor: statusColor[status] }]}>
           <Text style={styles.statusText}>{status}</Text>
         </View>
       </View>
@@ -140,6 +153,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#FFF", // White text for better contrast
+    color: "#FFF",
   },
 });
+

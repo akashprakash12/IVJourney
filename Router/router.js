@@ -217,21 +217,34 @@ router.post("/packages/vote", async (req, res) => {
 });
 router.post("/register", async (req, res) => {
   try {
-    const { fullName, userName, phone, email, password, role } = req.body;
+    const { fullName, userName, phone, email, password, role, gender } = req.body;
 
     // Validate required fields
-    if (!fullName || !userName || !phone || !email || !password || !role) {
+    if (!fullName || !userName || !phone || !email || !password || !role || !gender) {
       return res.status(400).json({ error: "All fields are required." });
     }
 
-    // Check if phone or email already exists
+    // Validate gender (optional, since enum in schema will handle it)
+    const validGenders = ["Male", "Female", "Other"];
+    if (!validGenders.includes(gender)) {
+      return res.status(400).json({ error: "Invalid gender value." });
+    }
+
+    // Check if username, phone, or email already exists
     const existingUser = await Register.findOne({
-      $or: [{ phone }, { email }],
+      $or: [{ userName }, { phone }, { email }],
     });
+
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ error: "Phone number or Email already in use!" });
+      if (existingUser.userName === userName) {
+        return res.status(400).json({ error: "Username already exists.", field: "userName" });
+      }
+      if (existingUser.phone === phone) {
+        return res.status(400).json({ error: "Phone number already in use.", field: "phone" });
+      }
+      if (existingUser.email === email) {
+        return res.status(400).json({ error: "Email already in use.", field: "email" });
+      }
     }
 
     // Hash password
@@ -245,6 +258,7 @@ router.post("/register", async (req, res) => {
       email,
       password: hashedPassword,
       role,
+      gender,
     };
 
     // Generate IDs only for Student and Industry Representative
@@ -260,10 +274,28 @@ router.post("/register", async (req, res) => {
     res.status(201).json({ message: "User registered successfully." });
   } catch (error) {
     console.error("Registration Error:", error);
+
+    // Handle duplicate key errors (e.g., duplicate userName, phone, or email)
+    if (error.code === 11000) {
+      if (error.keyValue.userName) {
+        return res.status(400).json({ error: "Username already exists.", field: "userName" });
+      }
+      if (error.keyValue.phone) {
+        return res.status(400).json({ error: "Phone number already in use.", field: "phone" });
+      }
+      if (error.keyValue.email) {
+        return res.status(400).json({ error: "Email already in use.", field: "email" });
+      }
+    }
+
+    // Handle validation errors (e.g., invalid role or gender)
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 router.get("/api/register", async (req, res) => {
   try {
     const { role } = req.query; // Get role from query parameters
@@ -489,6 +521,43 @@ router.delete("/request-status/:id", async (req, res) => {
   }
 });
 
+// GET voted user details and gender ratio
+router.get("/votes-details", async (req, res) => {
+  try {
+    console.log("Fetching Votes...");
+    
+    const votes = await Vote.find()
+      .populate({
+        path: "studentId",
+        model: "Register",
+        select: "fullName gender studentID",
+      })
+      .lean(); // ✅ Convert MongoDB documents to plain JSON for debugging
+
+    console.log("Votes with Populated Data:", votes); // ✅ Check console output
+
+    let maleCount = 0;
+    let femaleCount = 0;
+
+    votes.forEach((vote) => {
+      if (vote.studentId?.gender === "Male") maleCount++;
+      if (vote.studentId?.gender === "Female") femaleCount++;
+    });
+
+    const total = maleCount + femaleCount;
+    const genderRatio = {
+      malePercentage: total ? (maleCount / total) * 100 : 0,
+      femalePercentage: total ? (femaleCount / total) * 100 : 0,
+      maleCount,
+      femaleCount,
+    };
+
+    res.json({ votedUsers: votes, genderRatio });
+  } catch (error) {
+    console.error("Error fetching votes:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+});
 
 // Export the router
 module.exports = router;
