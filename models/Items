@@ -35,10 +35,12 @@ const PackageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 const voteSchema = new mongoose.Schema({
-  studentId: { type: String, required: true },
-  packageId: { type: String, required: true },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Register", required: true }, // ✅ Change String to ObjectId
+  packageId: { type: mongoose.Schema.Types.ObjectId, ref: "Package", required: true }, // ✅ Change String to ObjectId
   createdAt: { type: Date, default: Date.now },
 });
+
+
 const RegisterSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
@@ -51,12 +53,16 @@ const RegisterSchema = new mongoose.Schema(
       required: true,
       enum: ["Student", "Student Leader", "HOD", "Industry Representative"],
     },
+    gender: {
+      type: String,
+      required: true,
+      enum: ["Male", "Female", "Other"], // Ensure gender is one of these values
+    },
     studentID: { type: String, unique: true, sparse: true }, // Unique but ignored if null
     industryID: { type: String, unique: true, sparse: true }, // Unique but ignored if null
   },
   { timestamps: true }
 );
-
 const RequestSchema = new mongoose.Schema({
   Obj_id: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Register" },
   role: { type: String, required: true },

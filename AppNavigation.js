@@ -40,6 +40,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import Logo from "./assets/icone.jpg";
 import StudentRequist from "./src/Student/StudentRequist";
 import { TouchableOpacity } from "react-native";
+import VotedPersonsScreen from "./src/Student/VotedPersonsScreen";
+
 
 
 const Stack = createNativeStackNavigator();
@@ -93,6 +95,7 @@ export default function AppNavigation() {
           component={Guiconponet}
           options={{ headerShown: false }}
         />
+        
         <Stack.Screen
           name="Register"
           component={Register}
@@ -103,6 +106,7 @@ export default function AppNavigation() {
           component={Login}
           options={{ headerShown: false }}
         />
+        <Stack.Screen name="VotedPersons" component={VotedPersonsScreen} />
         <Stack.Screen name="PackageDetails" component={Package} />
         <Stack.Screen name="PackageUpload" component={PackageScreen} />
         <Stack.Screen name="Requistform" component={RequestForm} />
