@@ -6,14 +6,10 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
-<<<<<<< HEAD
   TextInput,
   Modal,
   KeyboardAvoidingView,
   Platform,
-=======
-  RefreshControl, // Added here
->>>>>>> a8f181c (reques and approve updated)
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -106,15 +102,9 @@ export default function PackageDetails() {
   } = route.params || {};
 
   const [showAllReviews, setShowAllReviews] = useState(false);
-<<<<<<< HEAD
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
-=======
-  const [refreshing, setRefreshing] = useState(false);
-
-
->>>>>>> a8f181c (reques and approve updated)
 
   // Sample reviews data
   const reviews = [
@@ -140,7 +130,6 @@ export default function PackageDetails() {
 
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
-<<<<<<< HEAD
   const handleAddComment = () => {
     // Handle adding the comment and rating
     console.log("User Rating:", userRating);
@@ -150,13 +139,6 @@ export default function PackageDetails() {
     setUserRating(0);
     setUserComment("");
     setIsCommentModalVisible(false);
-=======
-  // Pull-to-refresh function
-  const onRefresh = () => {
-    setRefreshing(true);
-    // Simulate fetching new reviews
-    setTimeout(() => setRefreshing(false), 1000);
->>>>>>> a8f181c (reques and approve updated)
   };
 
   return (
