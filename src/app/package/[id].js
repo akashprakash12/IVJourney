@@ -6,11 +6,31 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  RefreshControl, // Added here
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemeContext } from "../../../context/ThemeContext";
+import { AuthContext } from "../../../context/Authcontext";
 
+
+// Reusable Rating Component
+const Rating = ({ rating }) => {
+  return (
+    <View className="flex-row">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Ionicons
+          key={index}
+          name={index < rating ? "star" : "star-outline"}
+          size={16}
+          color={index < rating ? "#FFD700" : "#C0C0C0"}
+        />
+      ))}
+    </View>
+  );
+};
+
+// Reusable DetailSection Component
 const DetailSection = ({ title, children, textColor }) => {
   if (!children) return null;
   return (
@@ -21,7 +41,13 @@ const DetailSection = ({ title, children, textColor }) => {
   );
 };
 
+// Reusable ReviewItem Component
 const ReviewItem = ({ review }) => {
+  const { theme } = useContext(ThemeContext);
+  const isDarkMode = theme === "dark";
+  const textColor = isDarkMode ? "text-white" : "text-gray-800";
+  const secondaryTextColor = isDarkMode ? "text-gray-400" : "text-gray-600";
+
   const { user, rating, comment, date } = review;
 
   return (
@@ -29,28 +55,20 @@ const ReviewItem = ({ review }) => {
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center">
           <Image
-            source={{ uri: user.avatar }}
+            source={{ uri: user.avatar || "https://via.placeholder.com/150" }}
             className="w-10 h-10 rounded-full"
           />
-          <Text className="ml-3 font-medium text-gray-800">{user.name}</Text>
+          <Text className={`ml-3 font-medium ${textColor}`}>{user.name}</Text>
         </View>
-        <View className="flex-row">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <Ionicons
-              key={index}
-              name={index < rating ? "star" : "star-outline"}
-              size={16}
-              color={index < rating ? "#FFD700" : "#C0C0C0"}
-            />
-          ))}
-        </View>
+        <Rating rating={rating} />
       </View>
-      <Text className="mt-2 text-gray-600">{comment}</Text>
-      <Text className="mt-1 text-sm text-gray-500">{date}</Text>
+      <Text className={`mt-2 ${secondaryTextColor}`}>{comment}</Text>
+      <Text className={`mt-1 text-sm ${secondaryTextColor}`}>{date}</Text>
     </View>
   );
 };
 
+// Main PackageDetails Component
 export default function PackageDetails() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -62,6 +80,11 @@ export default function PackageDetails() {
   const secondaryTextColor = isDarkMode ? "text-gray-400" : "text-gray-700";
   const highlightColor = isDarkMode ? "text-yellow-400" : "text-yellow-600";
   const cardBg = isDarkMode ? "bg-[#1E1E1E]" : "bg-gray-100";
+  const { userDetails, setUserDetails } = useContext(AuthContext); // Get user details and setter function
+  
+  console.log("User Details from Context:", userDetails);
+
+
 
   const {
     name = "Unknown Package",
@@ -76,6 +99,9 @@ export default function PackageDetails() {
   } = route.params || {};
 
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+
 
   // Sample reviews data
   const reviews = [
@@ -101,11 +127,30 @@ export default function PackageDetails() {
 
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
+  // Pull-to-refresh function
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Simulate fetching new reviews
+    setTimeout(() => setRefreshing(false), 1000);
+  };
+
   return (
     <SafeAreaView className={`flex-1 ${bgColor}`}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Header */}
         <View className={`py-6 px-4 flex-row items-center ${bgColor}`}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={isDarkMode ? "white" : "black"}
+            />
+          </TouchableOpacity>
           <Text className={`text-2xl font-bold flex-1 text-center ${textColor}`}>
             {name}
           </Text>
@@ -145,20 +190,7 @@ export default function PackageDetails() {
 
           {/* Rating */}
           <DetailSection title="⭐ Rating" textColor={textColor}>
-            <View className="flex-row">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Text
-                  key={index}
-                  className={
-                    index < rating
-                      ? "text-yellow-400 text-xl"
-                      : secondaryTextColor
-                  }
-                >
-                  {index < rating ? "⭐" : "☆"}
-                </Text>
-              ))}
-            </View>
+            <Rating rating={rating} />
           </DetailSection>
 
           {/* Inclusions */}
@@ -214,20 +246,38 @@ export default function PackageDetails() {
 
           {/* Reviews Section */}
           <DetailSection title="⭐ Customer Reviews" textColor={textColor}>
-            {displayedReviews.map((review, index) => (
-              <ReviewItem key={index} review={review} />
-            ))}
-            {reviews.length > 2 && (
-              <TouchableOpacity
-                onPress={() => setShowAllReviews(!showAllReviews)}
-                className="mt-4"
-              >
-                <Text className={`text-center ${highlightColor} font-semibold`}>
-                  {showAllReviews ? "Show Less" : "See All Reviews"}
-                </Text>
-              </TouchableOpacity>
+            {displayedReviews.length > 0 ? (
+              <>
+                {displayedReviews.map((review, index) => (
+                  <ReviewItem key={index} review={review} />
+                ))}
+                {reviews.length > 2 && (
+                  <TouchableOpacity
+                    onPress={() => setShowAllReviews(!showAllReviews)}
+                    className="mt-4"
+                  >
+                    <Text className={`text-center ${highlightColor} font-semibold`}>
+                      {showAllReviews ? "Show Less" : "See All Reviews"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <Text className={`${secondaryTextColor} text-center`}>
+                No reviews yet. Be the first to leave a review!
+              </Text>
             )}
           </DetailSection>
+
+          {/* Write a Review Button */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate("WriteReview")}
+            className="mt-4 p-3 bg-[#F22E63] rounded-lg"
+          >
+            <Text className="text-white text-center font-semibold">
+              Write a Review
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

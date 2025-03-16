@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { 
   View, Text, FlatList, TouchableOpacity, TextInput, SafeAreaView, 
-  ActivityIndicator, Pressable, Image, RefreshControl, Alert,StyleSheet
+  ActivityIndicator, Pressable, Image, RefreshControl, Alert, StyleSheet
 } from "react-native";
 import { ThemeContext } from "../../context/ThemeContext";
 import axios from "axios";
@@ -62,7 +62,7 @@ export default function HomeScreen() {
   // Function to handle voting
   const handleVote = async (packageId) => {
     try {
-      const response = await axios.post(`http://${IP}:5000/api//packages/vote`, {
+      const response = await axios.post(`http://${IP}:5000/api/packages/vote`, {
         studentId: userDetails._id, // Student ID from user details
         packageId,
       });
@@ -114,88 +114,43 @@ export default function HomeScreen() {
           onPress={handleReload} // Manual refresh button
           className="ml-4 p-3 bg-primary rounded-full"
         >
-       <FontAwesome name="refresh" size={15} color={isDark?"white":"black"}/>
+          <FontAwesome name="refresh" size={15} color={isDark ? "white" : "black"} />
         </TouchableOpacity>
       </View>
 
       {/* Package List */}
-      {isStudent ? (
-        // Poll UI for Students
-        <FlatList
-          data={filteredPackages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable
-            onPress={() => handleVote(item.id)} // Handle voting
-            className={`rounded-lg p-4 mb-4 flex-row justify-between items-center ${
-              isDark ? "bg-secondary_2" : "bg-gray-100"
-            }`}
-          >
-            <View className="flex-1">
-              <Text className={`text-lg font-bold ${isDark ? "text-white" : "text-black"}`}>
-                {item.name}
-              </Text>
-              <Text className={`text-lg font-bold ${isDark ? "text-primary_1" : "text-primary"}`}>
-                {item.price}₹
-              </Text>
-          
-              {/* Progress Bar */}
-              <View className="mt-2">
-                <View style={styles.progressBarBackground}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      { width: `${item.votePercentage}%`, backgroundColor: isDark ? "#F22E63" : "#4CAF50" },
-                    ]}
-                  />
-                </View>
-                <Text className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-700"}`}>
-                  {item.votePercentage.toFixed(2)}% votes
-                </Text>
-              </View>
-            </View>
-          
-            {/* Detail Button */}
-            <Pressable
-              onPress={() => navigation.navigate("PackageDetails", { ...item })} 
-              className="bg-primary px-4 py-2 rounded-lg mb-8"
-            >
-              <Text className="text-white font-bold">Detail</Text>
-            </Pressable>
-          </Pressable>
-          
-          )}
-          contentContainerStyle={{ paddingBottom: 16 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> // Swipe-to-refresh
-          }
-        />
-      ) : (
-        // Default UI for Other Roles
-        <FlatList
-          data={filteredPackages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <PackageCard item={item} isDark={isDark} />}
-          contentContainerStyle={{ paddingBottom: 16 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> // Swipe-to-refresh
-          }
-        />
-      )}
+      <FlatList
+        data={filteredPackages}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <PackageCard 
+            item={item} 
+            isDark={isDark} 
+            handleVote={handleVote} // Pass handleVote function
+            isStudent={isStudent} // Pass isStudent prop
+          />
+        )}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> // Swipe-to-refresh
+        }
+      />
     </SafeAreaView>
   );
 }
-
-const PackageCard = ({ item, isDark }) => {
+const PackageCard = ({ item, isDark, handleVote, isStudent }) => {
   const navigation = useNavigation();
-console.log(item.image);
 
   return (
     <Pressable  
       onPress={() => navigation.navigate("PackageDetails", { ...item })} 
       className={`rounded-lg p-4 mb-4 ${isDark ? "bg-secondary_2" : "bg-gray-100"}`}
     >
-      <Image source={{ uri: item.image }} className="w-full h-64 rounded-lg mb-3" resizeMode="cover" />
+      {/* Conditionally Render Image for Non-Students */}
+      {!isStudent && (
+        <Image source={{ uri: item.image }} className="w-full h-64 rounded-lg mb-3" resizeMode="cover" />
+      )}
+
       <View>
         <Text className={`text-lg font-bold ${isDark ? "text-white" : "text-black"}`}>{item.name}</Text>
         <Text className={`mb-2 ${isDark ? "text-gray-400" : "text-gray-700"}`}>{item.description}</Text>
@@ -217,6 +172,27 @@ console.log(item.image);
           </Text>
         </View>
       </View>
+
+      {/* Conditionally Render Buttons for Students */}
+      {isStudent && (
+        <>
+          {/* Detail Button */}
+          <Pressable
+            onPress={() => navigation.navigate("PackageDetails", { ...item })} 
+            className="bg-primary px-4 py-2 rounded-lg mb-2"
+          >
+            <Text className="text-white font-bold">Detail</Text>
+          </Pressable>
+
+          {/* Vote Button */}
+          <Pressable
+            onPress={() => handleVote(item.id)} // Apply handleVote function
+            className="bg-secondary px-4 py-2 rounded-lg"
+          >
+            <Text className="text-white font-bold">Vote</Text>
+          </Pressable>
+        </>
+      )}
     </Pressable>
   );
 };

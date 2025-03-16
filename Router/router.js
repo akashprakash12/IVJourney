@@ -49,6 +49,15 @@ router.get("/", (req, res) => {
   res.send("Welcome to the IVJourney API!");
 });
 
+router.post("/upload-pdf", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  const filePath = `/uploads/${req.file.filename}`;
+  res.json({ filePath });
+});
+
 router.post("/Login", async (req, res) => {
   const { email, password } = req.body;
   console.log(email, password);
@@ -324,15 +333,16 @@ router.get("/api/register", async (req, res) => {
 router.post("/submit-request", async (req, res) => {
   try {
     const requestData = req.body;
+
+    // Validate user ID
     if (!mongoose.Types.ObjectId.isValid(requestData.Obj_id)) {
       return res.status(400).json({ error: "Invalid user ID format" });
     }
     requestData.Obj_id = new mongoose.Types.ObjectId(requestData.Obj_id);
 
-
-    // Ensure submissionDate and date are converted properly
-    requestData.submissionDate = new Date(requestData.submissionDate);
-    requestData.date = new Date(requestData.date);
+    // Convert dates to UTC
+    requestData.submissionDate = new Date(requestData.submissionDate).toISOString();
+    requestData.date = new Date(requestData.date).toISOString();
 
     // Convert distance to a number (removing 'km' if present)
     if (typeof requestData.distance === "string") {
@@ -341,23 +351,32 @@ router.post("/submit-request", async (req, res) => {
 
     console.log("Received Request Data:", requestData);
 
+    // Validate request format
     if (typeof requestData !== "object" || Array.isArray(requestData)) {
       return res.status(400).json({ error: "Invalid request format" });
     }
 
-    // ✅ Check if a similar request already exists (Same student, industry, and date)
-    const existingRequest = await Request.findOne({
-      studentName: requestData.studentName,
-      industry: requestData.industry,
-      date: requestData.date, // Check visit date to prevent duplicates
-    });
+    // Normalize data for duplicate check
+    const normalizedData = {
+      studentName: requestData.studentName.trim().toLowerCase(),
+      industry: requestData.industry.trim().toLowerCase(),
+      date: new Date(requestData.date).toISOString(),
+      email: requestData.email.trim().toLowerCase(),
+    };
+
+    console.log("Checking for duplicate request with:", normalizedData);
+
+    // Check for duplicate request
+    const existingRequest = await Request.findOne(normalizedData);
+
+    console.log("Existing Request Found:", existingRequest);
 
     if (existingRequest) {
       return res.status(409).json({ error: "Duplicate request already exists!" });
     }
 
-    // ✅ Save request to MongoDB only if it's not duplicate
-    const newRequest = new  Request(requestData);
+    // Save request to MongoDB
+    const newRequest = new Request(requestData);
     await newRequest.save();
 
     res.status(201).json({ message: "Request submitted successfully!" });
@@ -366,7 +385,6 @@ router.post("/submit-request", async (req, res) => {
     res.status(500).json({ error: "Failed to submit request." });
   }
 });
-
 // 1️⃣ Insert or Update User Profile
 router.post("/updateProfile", upload.single("profileImage"), async (req, res) => {
   const { name, studentID,industryID, branch, email, phone } = req.body;
@@ -526,7 +544,8 @@ router.delete("/request-status/:id", async (req, res) => {
 router.get("/votes-details", async (req, res) => {
   try {
     console.log("Fetching Votes...");
-    
+
+    // Fetch all votes with populated student details
     const votes = await Vote.find()
       .populate({
         path: "studentId",
@@ -537,6 +556,7 @@ router.get("/votes-details", async (req, res) => {
 
     console.log("Votes with Populated Data:", votes); // ✅ Check console output
 
+    // Calculate gender counts
     let maleCount = 0;
     let femaleCount = 0;
 
@@ -546,6 +566,8 @@ router.get("/votes-details", async (req, res) => {
     });
 
     const total = maleCount + femaleCount;
+
+    // Calculate gender ratio
     const genderRatio = {
       malePercentage: total ? (maleCount / total) * 100 : 0,
       femalePercentage: total ? (femaleCount / total) * 100 : 0,
@@ -553,12 +575,24 @@ router.get("/votes-details", async (req, res) => {
       femaleCount,
     };
 
-    res.json({ votedUsers: votes, genderRatio });
+    // Calculate total number of unique students who voted
+    const uniqueStudentIds = [...new Set(votes.map((vote) => vote.studentId?._id?.toString()))];
+    const totalStudents = uniqueStudentIds.length;
+
+    // Send response
+    res.json({
+      votedUsers: votes,
+      genderRatio,
+      totalStudents, // Add total number of unique students
+    });
   } catch (error) {
     console.error("Error fetching votes:", error);
     res.status(500).json({ message: "Server error", error });
   }
 });
+
+// Backend API Endpoint (Express.js example)
+
 
 // Export the router
 module.exports = router;
