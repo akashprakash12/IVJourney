@@ -6,6 +6,10 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -76,6 +80,9 @@ export default function PackageDetails() {
   } = route.params || {};
 
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
+  const [userRating, setUserRating] = useState(0);
+  const [userComment, setUserComment] = useState("");
 
   // Sample reviews data
   const reviews = [
@@ -100,6 +107,17 @@ export default function PackageDetails() {
   ];
 
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
+
+  const handleAddComment = () => {
+    // Handle adding the comment and rating
+    console.log("User Rating:", userRating);
+    console.log("User Comment:", userComment);
+
+    // Reset fields and close modal
+    setUserRating(0);
+    setUserComment("");
+    setIsCommentModalVisible(false);
+  };
 
   return (
     <SafeAreaView className={`flex-1 ${bgColor}`}>
@@ -212,6 +230,17 @@ export default function PackageDetails() {
             </Text>
           </DetailSection>
 
+          {/* Comment Button */}
+          <TouchableOpacity
+            className={`flex-row items-center justify-center mt-4 p-3 rounded-xl ${cardBg}`}
+            onPress={() => setIsCommentModalVisible(true)}
+          >
+            <Ionicons name="chatbubble-outline" size={20} color={highlightColor} />
+            <Text className={`${highlightColor} ml-2 font-semibold`}>
+              Add a Comment
+            </Text>
+          </TouchableOpacity>
+
           {/* Reviews Section */}
           <DetailSection title="⭐ Customer Reviews" textColor={textColor}>
             {displayedReviews.map((review, index) => (
@@ -230,6 +259,70 @@ export default function PackageDetails() {
           </DetailSection>
         </View>
       </ScrollView>
+
+      {/* Comment Modal */}
+      <Modal
+        visible={isCommentModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsCommentModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1 justify-end"
+        >
+          <View
+            className={`p-6 rounded-t-3xl ${isDarkMode ? "bg-[#1E1E1E]" : "bg-white"}`}
+          >
+            <Text className={`text-xl font-bold mb-4 ${textColor}`}>
+              Add Your Feedback
+            </Text>
+
+            {/* Rating Section */}
+            <View className="flex-row items-center mb-4">
+              <Text className={`${textColor} mr-3`}>Rating:</Text>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => setUserRating(index + 1)}
+                >
+                  <Ionicons
+                    name={index < userRating ? "star" : "star-outline"}
+                    size={24}
+                    color={index < userRating ? "#FFD700" : "#C0C0C0"}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Comment Input */}
+            <TextInput
+              className={`p-4 rounded-xl ${cardBg} ${textColor}`}
+              placeholder="Write your comment..."
+              placeholderTextColor={secondaryTextColor}
+              multiline
+              value={userComment}
+              onChangeText={setUserComment}
+            />
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              className={`mt-6 p-3 rounded-xl bg-[#F22E63] items-center`}
+              onPress={handleAddComment}
+            >
+              <Text className="text-white font-semibold">Submit</Text>
+            </TouchableOpacity>
+
+            {/* Close Button */}
+            <TouchableOpacity
+              className={`mt-4 p-3 rounded-xl ${cardBg} items-center`}
+              onPress={() => setIsCommentModalVisible(false)}
+            >
+              <Text className={`${highlightColor} font-semibold`}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
