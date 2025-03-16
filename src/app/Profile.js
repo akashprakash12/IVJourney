@@ -49,7 +49,7 @@ export default function ProfileScreen({ navigation }) {
         setPhone(data.phone || "");
         setImage(data.profileImage || null);
       } catch (error) {
-        console.error("Error fetching profile:", error);
+        // console.error("Error fetching profile:", error);
       } finally {
         setLoading(false);
       }
