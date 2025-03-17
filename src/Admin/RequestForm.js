@@ -95,17 +95,17 @@ export default function RequestForm({ navigation }) {
     }
   
     try {
-     
-      const requestData = {
-        Obj_id:userDetails._id,
-        role:userDetails.role,
-        email:userDetails.email,
-        studentName,
+      // Normalize data before sending
+      const normalizedData = {
+        Obj_id: userDetails._id,
+        role: userDetails.role,
+        email: userDetails.email.trim().toLowerCase(), // Normalize email
+        studentName: studentName.trim().toLowerCase(), // Normalize studentName
         department,
-        studentRep,
-        submissionDate,
-        industry,
-        date,
+        studentRep: studentRep.trim().toLowerCase(), // Normalize studentRep
+        submissionDate: new Date().toISOString(), // Ensure submissionDate is in UTC
+        industry: industry.trim().toLowerCase(), // Normalize industry
+        date: new Date(date).toISOString(), // Ensure date is in UTC
         studentsCount,
         faculty,
         transport,
@@ -118,11 +118,9 @@ export default function RequestForm({ navigation }) {
         checklist, // Include checklist data
       };
   
-      console.log("Submitting Request:", requestData);
+      console.log("Submitting Request Data:", normalizedData); // Log the data being sent
   
-      const response = await axios.post(`http://${IP}:5000/api/submit-request`, requestData);
-      console.log(response);
-      
+      const response = await axios.post(`http://${IP}:5000/api/submit-request`, normalizedData);
   
       Alert.alert("Success", "Your request has been submitted!");
     } catch (error) {
@@ -141,33 +139,45 @@ export default function RequestForm({ navigation }) {
       }
     }
   };
-  
-
-
   const fetchPackages = async () => {
     try {
       const response = await axios.get(`http://${IP}:5000/api/packages`);
-  
+ 
       if (!Array.isArray(response.data)) {
         throw new Error("Invalid API response format. Expected an array.");
       }
   
       // Sort packages by votes in descending order
       const sortedPackages = response.data.sort((a, b) => b.votes - a.votes);
-
+  
       // Get the most voted package
       const mostVotedPackage = sortedPackages[0];
   
       if (mostVotedPackage) {
-        console.log("Most Voted Package:", mostVotedPackage.packageName);
+    
+        // ✅ Auto-fill form fields
+        setIndustry(mostVotedPackage.packageName);
+        setPackageDetails(mostVotedPackage.description);
+        setActivity(mostVotedPackage.activities.join("\n")); // Format activities as multiline text
+        setDuration(mostVotedPackage.duration);
+        setTicketCost(mostVotedPackage.price.toString()); // Convert price to string
+  
+        // Fetch the total number of students who voted for this package
+        const response = await axios.get(`http://${IP}:5000/api/votes-details`);
+        const { totalStudents } = response.data;
+    
+        const totalVotes = totalStudents;
+  
+        // Auto-fill the number of students field
+        setStudentsCount(totalVotes.toString());
       } else {
         console.log("No packages available.");
       }
   
-      // Map data for state update
+      // Map data for industry selection dropdown
       const packageData = response.data.map((pkg) => ({
-        label: pkg.label, // Ensure correct keys
-        value: pkg.value,
+        label: pkg.packageName,
+        value: pkg.packageName,
       }));
   
       setIndustries(packageData); // Update state
