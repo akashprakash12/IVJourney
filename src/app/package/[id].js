@@ -10,12 +10,12 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemeContext } from "../../../context/ThemeContext";
 import { AuthContext } from "../../../context/Authcontext";
-
 
 // Reusable Rating Component
 const Rating = ({ rating }) => {
@@ -84,10 +84,6 @@ export default function PackageDetails() {
   const highlightColor = isDarkMode ? "text-yellow-400" : "text-yellow-600";
   const cardBg = isDarkMode ? "bg-[#1E1E1E]" : "bg-gray-100";
   const { userDetails, setUserDetails } = useContext(AuthContext); // Get user details and setter function
-  
-  console.log("User Details from Context:", userDetails);
-
-
 
   const {
     name = "Unknown Package",
@@ -105,6 +101,16 @@ export default function PackageDetails() {
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+
+    // Simulate a network request or any async operation
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000); // Adjust the timeout as needed
+  };
 
   // Sample reviews data
   const reviews = [
