@@ -23,14 +23,22 @@ const PackageSchema = new mongoose.Schema(
     packageName: { type: String, required: true },
     description: { type: String, required: true },
     duration: { type: String, required: true },
-    rating: { type: Number, required: false, default: 0 },
-    price: { type: Number, required: true }, // ✅ Remove min/max
+    rating: { type: Number, required: false, default: 0 }, // Average rating
+    price: { type: Number, required: true },
     activities: { type: [String], required: true },
-    inclusions: { type: [String], required: true }, 
-    instructions:{type:String,require:true},// ✅ Should be an array, not a string
+    inclusions: { type: [String], required: true },
+    instructions: { type: String, required: true },
     image: { type: String },
     votes: { type: Number, default: 0 }, // Total votes for this package
     votePercentage: { type: Number, default: 0 },
+    reviews: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "Register", required: true }, // Reference to the user
+        rating: { type: Number, required: true, min: 1, max: 5 }, // Rating from 1 to 5
+        comment: { type: String, required: false }, // Optional comment
+        date: { type: Date, default: Date.now }, // Timestamp
+      },
+    ],
   },
   { timestamps: true }
 );

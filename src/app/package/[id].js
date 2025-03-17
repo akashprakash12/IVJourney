@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,11 +11,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemeContext } from "../../../context/ThemeContext";
 import { AuthContext } from "../../../context/Authcontext";
+import { IP } from "@env";
+import axios from "axios";
 
 // Reusable Rating Component
 const Rating = ({ rating }) => {
@@ -51,7 +54,7 @@ const ReviewItem = ({ review }) => {
   const textColor = isDarkMode ? "text-white" : "text-gray-800";
   const secondaryTextColor = isDarkMode ? "text-gray-400" : "text-gray-600";
 
-  const { user, rating, comment, date } = review;
+  const { user = {}, rating, comment, date } = review;
 
   return (
     <View className="mb-4">
@@ -61,7 +64,9 @@ const ReviewItem = ({ review }) => {
             source={{ uri: user.avatar || "https://via.placeholder.com/150" }}
             className="w-10 h-10 rounded-full"
           />
-          <Text className={`ml-3 font-medium ${textColor}`}>{user.name}</Text>
+          <Text className={`ml-3 font-medium ${textColor}`}>
+            {user.name || "Anonymous User"}
+          </Text>
         </View>
         <Rating rating={rating} />
       </View>
@@ -76,6 +81,7 @@ export default function PackageDetails() {
   const navigation = useNavigation();
   const route = useRoute();
   const { theme } = useContext(ThemeContext);
+  const { userDetails } = useContext(AuthContext);
 
   const isDarkMode = theme === "dark";
   const bgColor = isDarkMode ? "bg-[#121212]" : "bg-white";
@@ -83,9 +89,9 @@ export default function PackageDetails() {
   const secondaryTextColor = isDarkMode ? "text-gray-400" : "text-gray-700";
   const highlightColor = isDarkMode ? "text-yellow-400" : "text-yellow-600";
   const cardBg = isDarkMode ? "bg-[#1E1E1E]" : "bg-gray-100";
-  const { userDetails, setUserDetails } = useContext(AuthContext); // Get user details and setter function
 
   const {
+    _id, // Package ID from route params
     name = "Unknown Package",
     description = "No description available.",
     duration = "N/A",
@@ -102,50 +108,70 @@ export default function PackageDetails() {
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [reviews, setReviews] = useState([]);
 
-  const onRefresh = () => {
+  // Check if the user is a student
+  const isStudent = userDetails?.role === "Student";
+
+  // Fetch reviews from the backend
+  const fetchReviews = useCallback(async () => {
+    try {
+      const response = await axios.get(`http://${IP}:5000/packages/${_id}`);
+      setReviews(response.data.reviews || []);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      Alert.alert("Error", "Failed to fetch reviews.");
+    }
+  }, [_id]);
+
+  // Refresh function
+  const onRefresh = async () => {
     setRefreshing(true);
-
-    // Simulate a network request or any async operation
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000); // Adjust the timeout as needed
+    await fetchReviews();
+    setRefreshing(false);
   };
 
-  // Sample reviews data
-  const reviews = [
-    {
-      user: { name: "John Doe", avatar: "https://via.placeholder.com/150" },
-      rating: 4,
-      comment: "Great package! Had a wonderful time.",
-      date: "2023-10-01",
-    },
-    {
-      user: { name: "Jane Smith", avatar: "https://via.placeholder.com/150" },
-      rating: 5,
-      comment: "Amazing experience! Highly recommended.",
-      date: "2023-09-25",
-    },
-    {
-      user: { name: "Alice Johnson", avatar: "https://via.placeholder.com/150" },
-      rating: 3,
-      comment: "It was okay, but could be better.",
-      date: "2023-09-20",
-    },
-  ];
+  // Fetch reviews on component mount
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
+
+  // Handle adding a comment
+  const handleAddComment = async () => {
+    try {
+      if (!userDetails || !userDetails._id) {
+        Alert.alert("Error", "User not logged in.");
+        return;
+      }
+
+      if (userRating < 1 || userRating > 5) {
+        Alert.alert("Error", "Please provide a rating between 1 and 5.");
+        return;
+      }
+
+      const payload = {
+        userId: userDetails._id,
+        rating: userRating,
+        comment: userComment,
+      };
+
+      const response = await axios.post(`http://${IP}:5000/packages/${_id}/feedback`, payload);
+      console.log("Feedback submitted successfully:", response.data);
+
+      // Reset fields and close modal
+      setUserRating(0);
+      setUserComment("");
+      setIsCommentModalVisible(false);
+
+      // Refresh reviews
+      fetchReviews();
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      Alert.alert("Error", "Failed to submit feedback. Please try again.");
+    }
+  };
 
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
-
-  const handleAddComment = () => {
-    // Handle adding the comment and rating
-    console.log("User Rating:", userRating);
-    console.log("User Comment:", userComment);
-
-    // Reset fields and close modal
-    setUserRating(0);
-    setUserComment("");
-    setIsCommentModalVisible(false);
-  };
 
   return (
     <SafeAreaView className={`flex-1 ${bgColor}`}>
@@ -157,13 +183,6 @@ export default function PackageDetails() {
       >
         {/* Header */}
         <View className={`py-6 px-4 flex-row items-center ${bgColor}`}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons
-              name="arrow-back"
-              size={24}
-              color={isDarkMode ? "white" : "black"}
-            />
-          </TouchableOpacity>
           <Text className={`text-2xl font-bold flex-1 text-center ${textColor}`}>
             {name}
           </Text>
@@ -172,7 +191,7 @@ export default function PackageDetails() {
         {/* Image */}
         <View className="px-4">
           <Image
-            source={{ uri: image }}
+            source={{ uri: image || "https://via.placeholder.com/150" }}
             className="w-full h-72 rounded-2xl shadow-lg"
             resizeMode="cover"
           />
@@ -257,16 +276,18 @@ export default function PackageDetails() {
             </Text>
           </DetailSection>
 
-          {/* Comment Button */}
-          <TouchableOpacity
-            className={`flex-row items-center justify-center mt-4 p-3 rounded-xl ${cardBg}`}
-            onPress={() => setIsCommentModalVisible(true)}
-          >
-            <Ionicons name="chatbubble-outline" size={20} color={highlightColor} />
-            <Text className={`${highlightColor} ml-2 font-semibold`}>
-              Add a Comment
-            </Text>
-          </TouchableOpacity>
+          {/* Comment Button (Only for Students) */}
+          {isStudent && (
+            <TouchableOpacity
+              className={`flex-row items-center justify-center mt-4 p-3 rounded-xl ${cardBg}`}
+              onPress={() => setIsCommentModalVisible(true)}
+            >
+              <Ionicons name="chatbubble-outline" size={20} color={highlightColor} />
+              <Text className={`${highlightColor} ml-2 font-semibold`}>
+                Add a Comment
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Reviews Section */}
           <DetailSection title="⭐ Customer Reviews" textColor={textColor}>
@@ -292,82 +313,74 @@ export default function PackageDetails() {
               </Text>
             )}
           </DetailSection>
-
-          {/* Write a Review Button */}
-          <TouchableOpacity
-            onPress={() => navigation.navigate("WriteReview")}
-            className="mt-4 p-3 bg-[#F22E63] rounded-lg"
-          >
-            <Text className="text-white text-center font-semibold">
-              Write a Review
-            </Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Comment Modal */}
-      <Modal
-        visible={isCommentModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsCommentModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1 justify-end"
+      {/* Comment Modal (Only for Students) */}
+      {isStudent && (
+        <Modal
+          visible={isCommentModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsCommentModalVisible(false)}
         >
-          <View
-            className={`p-6 rounded-t-3xl ${isDarkMode ? "bg-[#1E1E1E]" : "bg-white"}`}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "padding"}
+            className="flex-1 justify-end"
           >
-            <Text className={`text-xl font-bold mb-4 ${textColor}`}>
-              Add Your Feedback
-            </Text>
+            <View
+              className={`p-6 rounded-t-3xl ${isDarkMode ? "bg-[#1E1E1E]" : "bg-white"}`}
+            >
+              <Text className={`text-xl font-bold mb-4 ${textColor}`}>
+                Add Your Feedback
+              </Text>
 
-            {/* Rating Section */}
-            <View className="flex-row items-center mb-4">
-              <Text className={`${textColor} mr-3`}>Rating:</Text>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setUserRating(index + 1)}
-                >
-                  <Ionicons
-                    name={index < userRating ? "star" : "star-outline"}
-                    size={24}
-                    color={index < userRating ? "#FFD700" : "#C0C0C0"}
-                  />
-                </TouchableOpacity>
-              ))}
+              {/* Rating Section */}
+              <View className="flex-row items-center mb-4">
+                <Text className={`${textColor} mr-3`}>Rating:</Text>
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => setUserRating(index + 1)}
+                  >
+                    <Ionicons
+                      name={index < userRating ? "star" : "star-outline"}
+                      size={24}
+                      color={index < userRating ? "#FFD700" : "#C0C0C0"}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Comment Input */}
+              <TextInput
+                className={`p-4 rounded-xl ${cardBg} ${textColor}`}
+                placeholder="Write your comment..."
+                placeholderTextColor={secondaryTextColor}
+                multiline
+                value={userComment}
+                onChangeText={setUserComment}
+              />
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                className={`mt-6 p-3 rounded-xl bg-[#F22E63] items-center`}
+                onPress={handleAddComment}
+              >
+                <Text className="text-white font-semibold">Submit</Text>
+              </TouchableOpacity>
+
+              {/* Close Button */}
+              <TouchableOpacity
+                className={`mt-4 p-3 rounded-xl ${cardBg} items-center`}
+                onPress={() => setIsCommentModalVisible(false)}
+              >
+                <Text className={`${highlightColor} font-semibold`}>Close</Text>
+              </TouchableOpacity>
             </View>
-
-            {/* Comment Input */}
-            <TextInput
-              className={`p-4 rounded-xl ${cardBg} ${textColor}`}
-              placeholder="Write your comment..."
-              placeholderTextColor={secondaryTextColor}
-              multiline
-              value={userComment}
-              onChangeText={setUserComment}
-            />
-
-            {/* Submit Button */}
-            <TouchableOpacity
-              className={`mt-6 p-3 rounded-xl bg-[#F22E63] items-center`}
-              onPress={handleAddComment}
-            >
-              <Text className="text-white font-semibold">Submit</Text>
-            </TouchableOpacity>
-
-            {/* Close Button */}
-            <TouchableOpacity
-              className={`mt-4 p-3 rounded-xl ${cardBg} items-center`}
-              onPress={() => setIsCommentModalVisible(false)}
-            >
-              <Text className={`${highlightColor} font-semibold`}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+          </KeyboardAvoidingView>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
