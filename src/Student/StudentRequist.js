@@ -6,40 +6,47 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 
-export default function UndertakingForm({ navigation }) {
+export default function UndertakingForm() {
   const [studentName, setStudentName] = useState("");
   const [semester, setSemester] = useState("");
   const [branch, setBranch] = useState("");
-  const [className, setClassName] = useState("");
   const [rollNo, setRollNo] = useState("");
-  const [admissionNo, setAdmissionNo] = useState("");
-  const [residentialAddress, setResidentialAddress] = useState("");
-  const [studentPhone, setStudentPhone] = useState("");
   const [parentName, setParentName] = useState("");
-  const [localGuardianPhone, setLocalGuardianPhone] = useState("");
-  const [tourPurpose, setTourPurpose] = useState("");
   const [placesVisited, setPlacesVisited] = useState("");
   const [tourPeriod, setTourPeriod] = useState("");
   const [facultyDetails, setFacultyDetails] = useState("");
-  const [studentSignature, setStudentSignature] = useState("");
-  const [parentSignature, setParentSignature] = useState("");
+  const [studentSignature, setStudentSignature] = useState(null);
+  const [parentSignature, setParentSignature] = useState(null);
 
+  // Function to handle signature upload
+  const pickSignature = async (setSignature) => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 2], // Signature aspect ratio
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setSignature(result.assets[0].uri);
+    }
+  };
+
+  // Handle Form Submission
   const handleSubmit = () => {
     if (
       !studentName ||
       !semester ||
       !branch ||
-      !className ||
       !rollNo ||
-      !admissionNo ||
-      !residentialAddress ||
-      !studentPhone ||
       !parentName ||
-      !localGuardianPhone ||
-      !tourPurpose ||
       !placesVisited ||
       !tourPeriod ||
       !facultyDetails ||
@@ -50,176 +57,108 @@ export default function UndertakingForm({ navigation }) {
       return;
     }
 
-    const formData = {
-      studentName,
-      semester,
-      branch,
-      className,
-      rollNo,
-      admissionNo,
-      residentialAddress,
-      studentPhone,
-      parentName,
-      localGuardianPhone,
-      tourPurpose,
-      placesVisited,
-      tourPeriod,
-      facultyDetails,
-      studentSignature,
-      parentSignature,
-    };
-
-    console.log("Submitting Undertaking Form:", formData);
     Alert.alert("Success", "Your undertaking form has been submitted!");
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-100 p-5">
-      <Text className="text-3xl font-bold text-center text-pink-600 mb-5">
-        Undertaking Form ✍️
-      </Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, padding: 20 }}
+        keyboardShouldPersistTaps="handled"
+      >
+       
 
-      <View className="bg-white p-5 rounded-2xl shadow-md">
-        {/* Student Name */}
-        <Text className="text-gray-700 font-medium mb-1">Student Name</Text>
-        <TextInput
-          placeholder="Enter Student Name"
-          value={studentName}
-          onChangeText={setStudentName}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+        <View style={{ backgroundColor: "white", padding: 15, borderRadius: 10, elevation: 3 }}>
+          {/* Student Details */}
+          <Text style={styles.label}>Student Name</Text>
+          <TextInput style={styles.input} placeholder="Enter Student Name" value={studentName} onChangeText={setStudentName} />
 
-        {/* Semester, Branch, Class, Roll No., Admission No. */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Semester</Text>
-        <TextInput
-          placeholder="Enter Semester"
-          value={semester}
-          onChangeText={setSemester}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          <Text style={styles.label}>Semester</Text>
+          <TextInput style={styles.input} placeholder="Enter Semester" value={semester} onChangeText={setSemester} />
 
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Branch</Text>
-        <TextInput
-          placeholder="Enter Branch"
-          value={branch}
-          onChangeText={setBranch}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          <Text style={styles.label}>Branch</Text>
+          <TextInput style={styles.input} placeholder="Enter Branch" value={branch} onChangeText={setBranch} />
 
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Class</Text>
-        <TextInput
-          placeholder="Enter Class"
-          value={className}
-          onChangeText={setClassName}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          <Text style={styles.label}>Roll No.</Text>
+          <TextInput style={styles.input} placeholder="Enter Roll No." value={rollNo} onChangeText={setRollNo} />
 
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Roll No.</Text>
-        <TextInput
-          placeholder="Enter Roll No."
-          value={rollNo}
-          onChangeText={setRollNo}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          <Text style={styles.label}>Parent's Name</Text>
+          <TextInput style={styles.input} placeholder="Enter Parent's Name" value={parentName} onChangeText={setParentName} />
 
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Admission No.</Text>
-        <TextInput
-          placeholder="Enter Admission No."
-          value={admissionNo}
-          onChangeText={setAdmissionNo}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          <Text style={styles.label}>Places to Visit</Text>
+          <TextInput style={styles.input} placeholder="Enter Places" value={placesVisited} onChangeText={setPlacesVisited} />
 
-        {/* Residential Address */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Residential Address</Text>
-        <TextInput
-          placeholder="Enter Address"
-          value={residentialAddress}
-          onChangeText={setResidentialAddress}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-          multiline
-        />
+          <Text style={styles.label}>Tour Period</Text>
+          <TextInput style={styles.input} placeholder="Enter Tour Period (Date & Time)" value={tourPeriod} onChangeText={setTourPeriod} />
 
-        {/* Parent & Local Guardian */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Parent's Name</Text>
-        <TextInput
-          placeholder="Enter Parent's Name"
-          value={parentName}
-          onChangeText={setParentName}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          <Text style={styles.label}>Accompanying Faculty</Text>
+          <TextInput style={styles.input} placeholder="Enter Faculty Details" value={facultyDetails} onChangeText={setFacultyDetails} />
 
-        <Text className="text-gray-700 font-medium mt-4 mb-1">
-          Local Guardian's Phone No.
-        </Text>
-        <TextInput
-          placeholder="Enter Phone Number"
-          keyboardType="phone-pad"
-          value={localGuardianPhone}
-          onChangeText={setLocalGuardianPhone}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          {/* Student Signature Upload */}
+          <Text style={styles.label}>Upload Student Signature</Text>
+          <TouchableOpacity onPress={() => pickSignature(setStudentSignature)} style={styles.uploadButton}>
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>Upload Signature</Text>
+          </TouchableOpacity>
 
-        {/* Purpose of Tour */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Purpose of Tour</Text>
-        <TextInput
-          placeholder="Enter Purpose"
-          value={tourPurpose}
-          onChangeText={setTourPurpose}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          {/* Show Student Signature Preview */}
+          {studentSignature && <Image source={{ uri: studentSignature }} style={styles.signaturePreview} />}
 
-        {/* Places to Visit */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Places to Visit</Text>
-        <TextInput
-          placeholder="Enter Places"
-          value={placesVisited}
-          onChangeText={setPlacesVisited}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          {/* Parent Signature Upload */}
+          <Text style={styles.label}>Upload Parent Signature</Text>
+          <TouchableOpacity onPress={() => pickSignature(setParentSignature)} style={styles.uploadButton}>
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>Upload Signature</Text>
+          </TouchableOpacity>
 
-        {/* Tour Period */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Tour Period</Text>
-        <TextInput
-          placeholder="Enter Tour Period (Date & Time)"
-          value={tourPeriod}
-          onChangeText={setTourPeriod}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
+          {/* Show Parent Signature Preview */}
+          {parentSignature && <Image source={{ uri: parentSignature }} style={styles.signaturePreview} />}
 
-        {/* Faculty Details */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Accompanying Faculty</Text>
-        <TextInput
-          placeholder="Enter Faculty Details"
-          value={facultyDetails}
-          onChangeText={setFacultyDetails}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
-
-        {/* Signatures */}
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Student Signature</Text>
-        <TextInput
-          placeholder="Enter Signature"
-          value={studentSignature}
-          onChangeText={setStudentSignature}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
-
-        <Text className="text-gray-700 font-medium mt-4 mb-1">Parent Signature</Text>
-        <TextInput
-          placeholder="Enter Signature"
-          value={parentSignature}
-          onChangeText={setParentSignature}
-          className="border border-gray-300 p-3 rounded-lg bg-gray-50"
-        />
-
-        {/* Submit Button */}
-        <TouchableOpacity onPress={handleSubmit} className="mt-6">
-          <LinearGradient colors={["#FF6480", "#F22E63"]} className="p-4 rounded-full items-center">
-            <Text className="text-white font-bold text-lg">Submit Form</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          {/* Submit Button */}
+          <TouchableOpacity onPress={handleSubmit} style={{ marginTop: 20 }}>
+            <LinearGradient colors={["#FF6480", "#F22E63"]} style={styles.button}>
+              <Text style={{ color: "white", fontWeight: "bold" }}>Submit Form</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+// Styles
+const styles = {
+  label: {
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: "#F9F9F9",
+    marginBottom: 10,
+  },
+  uploadButton: {
+    backgroundColor: "#F22E63",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  signaturePreview: {
+    width: 200,
+    height: 100,
+    resizeMode: "contain",
+    marginBottom: 10,
+    borderColor: "#ddd",
+    borderWidth: 1,
+  },
+  button: {
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+};
