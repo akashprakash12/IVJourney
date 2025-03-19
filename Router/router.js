@@ -190,6 +190,69 @@ router.get("/packages", async (_req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+// Fetch a single package by ID
+router.get("/packages/:packageId", async (req, res) => {
+  try {
+    const { packageId } = req.params;
+    const package = await Package.findById(packageId);
+
+    if (!package) {
+      return res.status(404).json({ error: "Package not found." });
+    }
+
+    // Format the package with an image URL
+    const imageUrl = package.image ? `http://${IP}:5000/uploads/${package.image}` : null;
+    const formattedPackage = {
+      ...package._doc,
+      image: imageUrl,
+    };
+
+    res.status(200).json(formattedPackage);
+  } catch (error) {
+    console.error("Error fetching package:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// Add feedback to a package
+router.post("/packages/:packageId/feedback", async (req, res) => {
+  const { packageId } = req.params;
+  const { userId, rating, comment } = req.body;
+
+  try {
+    // Validate input
+    if (!userId || !rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "Invalid input. User ID and rating (1-5) are required." });
+    }
+
+    // Find the package
+    const package = await Package.findById(packageId);
+    if (!package) {
+      return res.status(404).json({ error: "Package not found." });
+    }
+
+    // Add the review
+    const newReview = {
+      userId,
+      rating,
+      comment,
+    };
+    package.reviews.push(newReview);
+
+    // Update the average rating
+    const totalRatings = package.reviews.reduce((sum, review) => sum + review.rating, 0);
+    package.rating = totalRatings / package.reviews.length;
+
+    // Save the updated package
+    await package.save();
+
+    res.status(201).json({ message: "Feedback added successfully!", package });
+  } catch (error) {
+    console.error("Error adding feedback:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 // Endpoint to handle voting
 router.post("/packages/vote", async (req, res) => {
   const { studentId, packageId } = req.body;
