@@ -8,13 +8,13 @@ import { Provider as PaperProvider } from "react-native-paper";
 export default function App() {
   return (
     <AuthProvider>
+      <PaperProvider> 
       <ThemeProvider>
-        <PaperProvider> {/* Wrap your app inside PaperProvider */}
           <GestureHandlerRootView style={{ flex: 1 }}>
             <AppNavigation />
           </GestureHandlerRootView>
-        </PaperProvider>
       </ThemeProvider>
+      </PaperProvider>
     </AuthProvider>
   );
 }
