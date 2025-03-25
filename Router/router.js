@@ -194,6 +194,7 @@ router.get("/packages", async (_req, res) => {
 router.get("/packages/:packageId", async (req, res) => {
   try {
     const { packageId } = req.params;
+
     const package = await Package.findById(packageId);
 
     if (!package) {
@@ -218,39 +219,292 @@ router.get("/packages/:packageId", async (req, res) => {
 // Add feedback to a package
 router.post("/packages/:packageId/feedback", async (req, res) => {
   const { packageId } = req.params;
-  const { userId, rating, comment } = req.body;
+  const { userId, rating, comment, name } = req.body;
+
+  // Validate input
+  if (!userId || !rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ 
+      error: "Rating (1-5 stars) and valid userId are required",
+      code: "MISSING_REQUIRED_FIELDS"
+    });
+  }
+
+  // Validate ObjectId format
+  if (!mongoose.Types.ObjectId.isValid(userId) || 
+      !mongoose.Types.ObjectId.isValid(packageId)) {
+    return res.status(400).json({ 
+      error: "Invalid ID format",
+      code: "INVALID_ID_FORMAT"
+    });
+  }
 
   try {
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Find package and user with profile data
+      const [package, user] = await Promise.all([
+        Package.findById(packageId).session(session),
+        Register.findById(userId).populate({
+          path: 'profile',
+          model: 'Profile'
+        }).session(session)
+      ]);
+
+      if (!package) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ 
+          error: "Package not found",
+          code: "PACKAGE_NOT_FOUND"
+        });
+      }
+      
+      if (!user) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ 
+          error: "User not found",
+          code: "USER_NOT_FOUND",
+          details: `No user found with id: ${userId}`
+        });
+      }
+
+      // Check for existing feedback using the user's ID
+      const existingReviewIndex = package.reviews.findIndex(r => 
+        r.userId.toString() === userId.toString()
+      );
+
+      if (existingReviewIndex !== -1) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(409).json({  // Changed to 409 Conflict
+          error: "You've already reviewed this package",
+          code: "DUPLICATE_FEEDBACK",
+          existingReview: package.reviews[existingReviewIndex] // Return existing review
+        });
+      }
+
+      // Create new review
+      const newReview = {
+        userId: user._id,
+        fullName: name || user.fullName,
+        rating: Number(rating), // Ensure it's a number
+        date: new Date(),
+        user: {
+          _id: user._id,
+          fullName: name || user.fullName,
+          profileImage: user.profile?.profileImage || null // Simplified
+        },
+        ...(comment && { comment: comment.trim() })
+      };
+
+      // Update package
+      package.reviews.push(newReview);
+      package.rating = calculateAverageRating(package.reviews);
+      
+      await package.save({ session });
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // Format the response
+      const response = {
+        success: true,
+        message: "Feedback submitted successfully",
+        review: newReview,
+        package: formatPackage(package)
+      };
+
+      // Debug log for successful submission
+      console.log('Feedback submitted:', {
+        package: package._id,
+        user: user._id,
+        rating: newReview.rating
+      });
+
+      return res.status(201).json(response);
+
+    } catch (error) {
+      // If any error occurs, abort the transaction
+      await session.abortTransaction();
+      session.endSession();
+      throw error; // This will be caught by the outer catch
+    }
+
+  } catch (error) {
+    console.error("Feedback submission error:", error);
+    
+    // Handle duplicate key error (might occur in race conditions)
+    if (error.code === 11000 || error.message.includes('duplicate')) {
+      return res.status(409).json({
+        error: "Duplicate feedback detected",
+        code: "DUPLICATE_FEEDBACK"
+      });
+    }
+
+    const errorResponse = {
+      error: "Internal server error",
+      code: "SERVER_ERROR"
+    };
+
+    // Include stack trace in development
+    if (process.env.NODE_ENV === 'development') {
+      errorResponse.stack = error.stack;
+      errorResponse.message = error.message;
+    }
+
+    return res.status(500).json(errorResponse);
+  }
+});
+// Helper functions
+function calculateAverageRating(reviews) {
+  return reviews.length 
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+    : 0;
+}
+
+function formatReview(review) {
+  return {
+    ...review,
+    user: {
+      ...review.user,
+      profileImage: review.user.profileImage
+        ? `http://${IP}:5000${review.user.profileImage}`
+        : null
+    }
+  };
+}
+
+function formatPackage(package) {
+  return {
+    ...package.toObject(),
+    image: package.image ? `http://${IP}:5000/uploads/${package.image}` : null,
+    reviews: package.reviews.map(formatReview)
+  };
+}
+
+
+// Update feedback for a package
+router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
+  try {
+    const { packageId, reviewId } = req.params;
+    const { userId, rating, comment, name } = req.body;
+
     // Validate input
     if (!userId || !rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ error: "Invalid input. User ID and rating (1-5) are required." });
+      return res.status(400).json({ 
+        error: "Rating (1-5 stars) and valid userId are required",
+        code: "MISSING_REQUIRED_FIELDS"
+      });
     }
 
     // Find the package
     const package = await Package.findById(packageId);
     if (!package) {
-      return res.status(404).json({ error: "Package not found." });
+      return res.status(404).json({ 
+        error: "Package not found",
+        code: "PACKAGE_NOT_FOUND"
+      });
     }
 
-    // Add the review
-    const newReview = {
-      userId,
-      rating,
-      comment,
-    };
-    package.reviews.push(newReview);
+    // Find the review to update
+    const reviewIndex = package.reviews.findIndex(
+      r => r._id.toString() === reviewId && r.userId.toString() === userId
+    );
 
-    // Update the average rating
-    const totalRatings = package.reviews.reduce((sum, review) => sum + review.rating, 0);
-    package.rating = totalRatings / package.reviews.length;
+    if (reviewIndex === -1) {
+      return res.status(404).json({ 
+        error: "Review not found or not owned by user",
+        code: "REVIEW_NOT_FOUND"
+      });
+    }
 
-    // Save the updated package
+    // Update the review
+    package.reviews[reviewIndex].rating = rating;
+    package.reviews[reviewIndex].comment = comment;
+    package.reviews[reviewIndex].fullName = name || package.reviews[reviewIndex].fullName;
+    package.reviews[reviewIndex].date = new Date();
+
+    // Recalculate average rating
+    package.rating = calculateAverageRating(package.reviews);
+
     await package.save();
 
-    res.status(201).json({ message: "Feedback added successfully!", package });
+    res.status(200).json({
+      success: true,
+      message: "Review updated successfully",
+      package: formatPackage(package)
+    });
+
   } catch (error) {
-    console.error("Error adding feedback:", error);
-    res.status(500).json({ error: "Server error" });
+    console.error("Error updating review:", error);
+    res.status(500).json({ 
+      error: "Internal server error",
+      code: "SERVER_ERROR"
+    });
+  }
+});
+// Delete feedback for a package
+router.delete("/packages/:packageId/feedback/:reviewId", async (req, res) => {
+  try {
+    const { packageId, reviewId } = req.params;
+    const { userId } = req.body;
+
+    // Validate input
+    if (!userId) {
+      return res.status(400).json({ 
+        error: "Valid userId is required",
+        code: "MISSING_REQUIRED_FIELDS"
+      });
+    }
+
+    // Find the package
+    const package = await Package.findById(packageId);
+    if (!package) {
+      return res.status(404).json({ 
+        error: "Package not found",
+        code: "PACKAGE_NOT_FOUND"
+      });
+    }
+
+    // Find the review to delete
+    const reviewIndex = package.reviews.findIndex(
+      r => r._id.toString() === reviewId && r.userId.toString() === userId
+    );
+
+    if (reviewIndex === -1) {
+      return res.status(404).json({ 
+        error: "Review not found or not owned by user",
+        code: "REVIEW_NOT_FOUND"
+      });
+    }
+
+    // Remove the review
+    package.reviews.splice(reviewIndex, 1);
+
+    // Recalculate average rating
+    package.rating = package.reviews.length > 0 
+      ? package.reviews.reduce((sum, r) => sum + r.rating, 0) / package.reviews.length
+      : 0;
+
+    await package.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Review deleted successfully",
+      package: formatPackage(package)
+    });
+
+  } catch (error) {
+    console.error("Error deleting review:", error);
+    res.status(500).json({ 
+      error: "Internal server error",
+      code: "SERVER_ERROR"
+    });
   }
 });
 // Endpoint to handle voting
@@ -450,52 +704,72 @@ router.post("/submit-request", async (req, res) => {
 });
 // 1️⃣ Insert or Update User Profile
 router.post("/updateProfile", upload.single("profileImage"), async (req, res) => {
-  const { name, studentID,industryID, branch, email, phone } = req.body;
+  const { name, studentID, industryID, branch, email, phone } = req.body;
 
   try {
-    let user = await Profile.findOne({ email });
+    let profile = await Profile.findOne({ email });
+    let registerUser = await Register.findOne({ email });
 
-    if (!user) {
-      // If user doesn't exist, create a new profile
-      const newUser = new Profile({
+    if (!profile) {
+      // Create new profile
+      profile = new Profile({
         name,
         studentID: studentID || null,
-        industryID:industryID|| null,
+        industryID: industryID || null,
         branch,
         email,
         phone,
         profileImage: req.file ? `/uploads/${req.file.filename}` : null,
       });
+      await profile.save();
 
-      await newUser.save();
-      return res.json({ message: "Profile created successfully", user: newUser });
-    }
+      // Update Register collection with profile reference
+      if (registerUser) {
+        registerUser.profile = profile._id;
+        await registerUser.save();
+      }
+    } else {
+      // Update existing profile
+      if (req.file && profile.profileImage) {
+        const oldImagePath = path.join(__dirname, "..", profile.profileImage);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
 
-    // If a new image is uploaded, delete the old one
-    if (req.file && user.profileImage) {
-      const oldImagePath = path.join(__dirname, "..", user.profileImage);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath); // Delete the old image
+      profile.name = name;
+      if (studentID) profile.studentID = studentID;
+      if (industryID) profile.industryID = industryID;
+      profile.branch = branch;
+      profile.phone = phone;
+      if (req.file) {
+        profile.profileImage = `/uploads/${req.file.filename}`;
+      }
+      await profile.save();
+
+      // Update Register collection if needed
+      if (registerUser && !registerUser.profile) {
+        registerUser.profile = profile._id;
+        await registerUser.save();
       }
     }
 
-    // Update user profile
-    user.name = name;
-    if (studentID) user.studentID = studentID;
-    user.branch = branch;
-    user.phone = phone;
-    if (req.file) {
-      user.profileImage = `/uploads/${req.file.filename}`; // Save new image
-    }
-
-    await user.save();
-    return res.json({ message: "Profile updated successfully", user });
+    // Return complete user data
+    const updatedProfile = await Profile.findById(profile._id);
+    res.json({ 
+      message: "Profile updated successfully", 
+      user: {
+        ...updatedProfile.toObject(),
+        profileImage: req.file 
+          ? `${IP}${updatedProfile.profileImage}`
+          : updatedProfile.profileImage
+      }
+    });
   } catch (error) {
     console.error("Error updating profile:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
-
 router.get("/getProfile/:email", async (req, res) => {
   try {
     const { email } = req.params;

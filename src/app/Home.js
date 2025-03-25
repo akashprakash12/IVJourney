@@ -1,13 +1,12 @@
 import React, { useContext, useEffect, useState } from "react";
-import { 
-  View, Text, FlatList, TouchableOpacity, TextInput, SafeAreaView, 
-  ActivityIndicator, Pressable, Image, RefreshControl, Alert, StyleSheet
+import {
+  View, Text, FlatList, TouchableOpacity, TextInput, SafeAreaView,
+  ActivityIndicator, Pressable, Image, RefreshControl, Alert, StyleSheet, Animated
 } from "react-native";
 import { ThemeContext } from "../../context/ThemeContext";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import { IP } from "@env";
-import { ProgressBar } from "react-native-paper";
 import { AuthContext } from "../../context/Authcontext";
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -15,23 +14,21 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [packages, setPackages] = useState([]);
-  const [refreshing, setRefreshing] = useState(false); // For pull-to-refresh
-  const [reload, setReload] = useState(false); // State to trigger re-fetch
+  const [refreshing, setRefreshing] = useState(false);
+  const [reload, setReload] = useState(false);
+  const [isVoting, setIsVoting] = useState(false);
 
   const { theme } = useContext(ThemeContext);
   const isDark = theme === "dark";
-  const { userDetails } = useContext(AuthContext); // Get user details
-
-  const isStudent = userDetails?.role === "Student"; // Check if the user is a student
+  const { userDetails } = useContext(AuthContext);
+  const isStudent = userDetails?.role === "Student";
   const navigation = useNavigation();
 
-  // Fetch packages when the component mounts or `reload` changes
   useEffect(() => {
     const fetchPackages = async () => {
       try {
         setIsLoading(true);
         const response = await axios.get(`http://${IP}:5000/api/packages`);
-
         if (Array.isArray(response.data)) {
           setPackages(response.data.map(pkg => ({
             id: pkg._id || Math.random().toString(36).substr(2, 9),
@@ -43,10 +40,7 @@ export default function HomeScreen() {
             activities: pkg.activities || [],
             inclusions: pkg.inclusions || "Not specified",
             instructions: pkg.instructions || "No instructions available",
-            image: pkg.image && pkg.image.startsWith("http") 
-            ? pkg.image 
-            : `http://${IP}:5000/uploads/${pkg.image}`,
-          
+            image: pkg.image.startsWith("http") ? pkg.image : `http://${IP}:5000/uploads/${pkg.image}`,
             votes: pkg.votes || 0, // Total votes for this package
             votePercentage: pkg.votePercentage || 0, // Percentage of votes
           })));
@@ -55,41 +49,47 @@ export default function HomeScreen() {
         console.error("Error fetching packages:", error);
       } finally {
         setIsLoading(false);
-        setRefreshing(false); // Stop pull-to-refresh indicator
+        setRefreshing(false);
       }
     };
 
     fetchPackages();
-  }, [reload]); // Re-run when `reload` changes
+  }, [reload]);
 
-  // Function to handle voting
   const handleVote = async (packageId) => {
+    if (!userDetails || !userDetails._id) {
+      Alert.alert("Error", "User not logged in.");
+      return;
+    }
+
+    setIsVoting(true);
     try {
       const response = await axios.post(`http://${IP}:5000/api/packages/vote`, {
-        studentId: userDetails._id, // Student ID from user details
+        studentId: userDetails._id,
         packageId,
       });
       Alert.alert("Success", response.data.message);
-      setReload(prev => !prev); // Refresh the package list
+      setReload(prev => !prev);
     } catch (error) {
       console.error("Error voting:", error);
       Alert.alert("Error", error.response?.data?.message || "Failed to vote.");
+    } finally {
+      setIsVoting(false);
     }
   };
 
-  // Function to manually trigger a refresh
   const handleReload = () => {
-    setReload(prev => !prev); // Toggle `reload` state to trigger `useEffect`
+    setReload(prev => !prev);
   };
 
-  // Handle pull-to-refresh
   const onRefresh = () => {
     setRefreshing(true);
     handleReload();
   };
 
   const filteredPackages = packages.filter(pkg =>
-    pkg.name?.toLowerCase().includes(search.toLowerCase())
+    pkg.name?.toLowerCase().includes(search.toLowerCase()) ||
+    pkg.description?.toLowerCase().includes(search.toLowerCase())
   );
 
   if (isLoading) {
@@ -102,9 +102,8 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className={`flex-1 px-6 ${isDark ? "bg-dark" : "bg-white"}`}>
-      {/* Search Bar & Refresh Button */}
       <View className="flex-row justify-between items-center mb-3 mt-5">
-        <TextInput 
+        <TextInput
           placeholder="Search for packages"
           placeholderTextColor={isDark ? "#aaa" : "#333"}
           value={search}
@@ -113,45 +112,64 @@ export default function HomeScreen() {
             isDark ? "bg-inputBg border-gray-600 text-white" : "bg-white border-gray-300 text-black"
           }`}
         />
-        <TouchableOpacity 
-          onPress={handleReload} // Manual refresh button
+        <TouchableOpacity
+          onPress={handleReload}
           className="ml-4 p-3 bg-primary rounded-full"
         >
           <FontAwesome name="refresh" size={15} color={isDark ? "white" : "black"} />
         </TouchableOpacity>
       </View>
 
-      {/* Package List */}
       <FlatList
         data={filteredPackages}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <PackageCard 
-            item={item} 
-            isDark={isDark} 
-            handleVote={handleVote} // Pass handleVote function
-            isStudent={isStudent} // Pass isStudent prop
+          <PackageCard
+            item={item}
+            isDark={isDark}
+            handleVote={handleVote}
+            isStudent={isStudent}
+            isVoting={isVoting}
           />
         )}
         contentContainerStyle={{ paddingBottom: 16 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> // Swipe-to-refresh
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       />
     </SafeAreaView>
   );
 }
-const PackageCard = ({ item, isDark, handleVote, isStudent }) => {
+
+const PackageCard = ({ item, isDark, handleVote, isStudent, isVoting }) => {
   const navigation = useNavigation();
+  const progress = new Animated.Value(item.votePercentage);
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: item.votePercentage,
+      duration: 500,
+      useNativeDriver: false,
+    }).start();
+  }, [item.votePercentage]);
+
+  const width = progress.interpolate({
+    inputRange: [0, 100],
+    outputRange: ["0%", "100%"],
+  });
 
   return (
-    <Pressable  
-      onPress={() => navigation.navigate("PackageDetails", { ...item })} 
+    <Pressable
+      onPress={() => navigation.navigate("PackageDetails", { ...item })}
       className={`rounded-lg p-4 mb-4 ${isDark ? "bg-secondary_2" : "bg-gray-100"}`}
     >
-      {/* Conditionally Render Image for Non-Students */}
       {!isStudent && (
-        <Image source={{ uri: item.image }} className="w-full h-64 rounded-lg mb-3" resizeMode="cover" />
+        <Image
+          source={{ uri: item.image || "https://via.placeholder.com/150" }}
+          className="w-full h-64 rounded-lg mb-3"
+          resizeMode="cover"
+          onError={(e) => console.log("Image failed to load:", e.nativeEvent.error)}
+        />
       )}
 
       <View>
@@ -160,13 +178,12 @@ const PackageCard = ({ item, isDark, handleVote, isStudent }) => {
         <Text className={`text-lg font-bold ${isDark ? "text-primary_1" : "text-primary"}`}>
           {item.price}₹
         </Text>
-        {/* Custom Progress Bar */}
         <View className="mt-2">
           <View style={styles.progressBarBackground}>
-            <View
+            <Animated.View
               style={[
                 styles.progressBarFill,
-                { width: `${item.votePercentage}%`, backgroundColor: isDark ? "#F22E63" : "#4CAF50" },
+                { width, backgroundColor: isDark ? "#F22E63" : "#4CAF50" },
               ]}
             />
           </View>
@@ -176,21 +193,18 @@ const PackageCard = ({ item, isDark, handleVote, isStudent }) => {
         </View>
       </View>
 
-      {/* Conditionally Render Buttons for Students */}
       {isStudent && (
         <>
-          {/* Detail Button */}
           <Pressable
-            onPress={() => navigation.navigate("PackageDetails", { ...item })} 
+            onPress={() => navigation.navigate("PackageDetails", { ...item })}
             className="bg-primary px-4 py-2 rounded-lg mb-2"
           >
             <Text className="text-white font-bold">Detail</Text>
           </Pressable>
-
-          {/* Vote Button */}
           <Pressable
-            onPress={() => handleVote(item.id)} // Apply handleVote function
-            className="bg-secondary px-4 py-2 rounded-lg"
+            onPress={() => handleVote(item.id)}
+            disabled={isVoting}
+            className={`bg-secondary px-4 py-2 rounded-lg ${isVoting ? "opacity-50" : ""}`}
           >
             <Text className="text-white font-bold">Vote</Text>
           </Pressable>
@@ -204,7 +218,7 @@ const styles = StyleSheet.create({
   progressBarBackground: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#e0e0e0", // Light gray background
+    backgroundColor: "#e0e0e0",
     overflow: "hidden",
   },
   progressBarFill: {

@@ -21,16 +21,17 @@ import { IP } from "@env";
 import axios from "axios";
 
 // Reusable Rating Component
-const Rating = ({ rating }) => {
+const Rating = ({ rating, onPress, size = 16, editable = false }) => {
   return (
     <View className="flex-row">
       {Array.from({ length: 5 }).map((_, index) => (
-        <Ionicons
-          key={index}
-          name={index < rating ? "star" : "star-outline"}
-          size={16}
-          color={index < rating ? "#FFD700" : "#C0C0C0"}
-        />
+        <TouchableOpacity key={index} onPress={() => editable && onPress(index + 1)}>
+          <Ionicons
+            name={index < rating ? "star" : "star-outline"}
+            size={size}
+            color={index < rating ? "#FFD700" : "#C0C0C0"}
+          />
+        </TouchableOpacity>
       ))}
     </View>
   );
@@ -48,30 +49,72 @@ const DetailSection = ({ title, children, textColor }) => {
 };
 
 // Reusable ReviewItem Component
-const ReviewItem = ({ review }) => {
+const ReviewItem = ({ review, onEditPress, onDeletePress }) => {
   const { theme } = useContext(ThemeContext);
+  const { userDetails } = useContext(AuthContext);
   const isDarkMode = theme === "dark";
   const textColor = isDarkMode ? "text-white" : "text-gray-800";
   const secondaryTextColor = isDarkMode ? "text-gray-400" : "text-gray-600";
+  
+  // Check if this is the current user's review
+  const isCurrentUserReview = userDetails?._id === review.userId;
 
-  const { user = {}, rating, comment, date } = review;
+  // Default avatar if no profile image
+  const defaultAvatar = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+
+  // Construct the proper image URL
+  const getProfileImageUrl = () => {
+    if (!review.user?.profileImage) return defaultAvatar;
+    
+    if (review.user.profileImage.startsWith('http')) {
+      return review.user.profileImage;
+    }
+    
+    const cleanPath = review.user.profileImage.replace(/^\/+/, '');
+    return `http://${IP}:5000/${cleanPath}`;
+  };
 
   return (
     <View className="mb-4">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center">
           <Image
-            source={{ uri: user.avatar || "https://via.placeholder.com/150" }}
+            source={{ uri: getProfileImageUrl() }}
             className="w-10 h-10 rounded-full"
+            onError={(e) => {
+              console.log("Failed to load profile image:", e.nativeEvent.error);
+              e.target.source = { uri: defaultAvatar };
+            }}
           />
           <Text className={`ml-3 font-medium ${textColor}`}>
-            {user.name || "Anonymous User"}
+            {review.fullName || "Anonymous User"}
           </Text>
         </View>
-        <Rating rating={rating} />
+        <View className="flex-row items-center">
+          <Rating rating={review.rating} />
+          {isCurrentUserReview && (
+            <View className="flex-row ml-2">
+              <TouchableOpacity 
+                onPress={() => onEditPress(review)}
+                className="mr-2"
+              >
+                <Ionicons name="create-outline" size={18} color={isDarkMode ? "#FFFFFF" : "#000000"} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => onDeletePress(review)}
+              >
+                <Ionicons name="trash-outline" size={18} color={isDarkMode ? "#FF6347" : "#FF0000"} />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </View>
-      <Text className={`mt-2 ${secondaryTextColor}`}>{comment}</Text>
-      <Text className={`mt-1 text-sm ${secondaryTextColor}`}>{date}</Text>
+      {review.comment && (
+        <Text className={`mt-2 ${secondaryTextColor}`}>{review.comment}</Text>
+      )}
+      <Text className={`mt-1 text-sm ${secondaryTextColor}`}>
+        {new Date(review.date).toLocaleDateString()}
+      </Text>
     </View>
   );
 };
@@ -91,7 +134,7 @@ export default function PackageDetails() {
   const cardBg = isDarkMode ? "bg-[#1E1E1E]" : "bg-gray-100";
 
   const {
-    _id, // Package ID from route params
+    id,
     name = "Unknown Package",
     description = "No description available.",
     duration = "N/A",
@@ -105,10 +148,12 @@ export default function PackageDetails() {
 
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [reviews, setReviews] = useState([]);
+  const [editingReview, setEditingReview] = useState(null);
 
   // Check if the user is a student
   const isStudent = userDetails?.role === "Student";
@@ -116,13 +161,16 @@ export default function PackageDetails() {
   // Fetch reviews from the backend
   const fetchReviews = useCallback(async () => {
     try {
-      const response = await axios.get(`http://${IP}:5000/packages/${_id}`);
+      console.log("Fetching reviews for package ID:", id);
+      const response = await axios.get(`http://${IP}:5000/api/packages/${id}`);
+      console.log(response.data);
+      
       setReviews(response.data.reviews || []);
     } catch (error) {
       console.error("Error fetching reviews:", error);
       Alert.alert("Error", "Failed to fetch reviews.");
     }
-  }, [_id]);
+  }, [id]);
 
   // Refresh function
   const onRefresh = async () => {
@@ -150,12 +198,17 @@ export default function PackageDetails() {
       }
 
       const payload = {
+        name: userDetails.fullName,
         userId: userDetails._id,
         rating: userRating,
         comment: userComment,
       };
 
-      const response = await axios.post(`http://${IP}:5000/packages/${_id}/feedback`, payload);
+      const response = await axios.post(
+        `http://${IP}:5000/api/packages/${id}/feedback`, 
+        payload
+      );
+
       console.log("Feedback submitted successfully:", response.data);
 
       // Reset fields and close modal
@@ -166,10 +219,104 @@ export default function PackageDetails() {
       // Refresh reviews
       fetchReviews();
     } catch (error) {
-      console.error("Error submitting feedback:", error);
-      Alert.alert("Error", "Failed to submit feedback. Please try again.");
+      if (error.response?.status === 409) {
+        Alert.alert("Already Submitted", "You've already submitted feedback for this package.");
+        setHasSubmittedReview(true);
+      } else {
+        Alert.alert("Error", "Failed to submit feedback. Please try again.");
+      }
     }
   };
+
+  // Handle edit button press
+  const handleEditPress = (review) => {
+    setEditingReview(review);
+    setUserRating(review.rating);
+    setUserComment(review.comment || "");
+    setIsEditModalVisible(true);
+  };
+
+  // Handle updating a review
+  const handleUpdateReview = async () => {
+    try {
+      if (!userDetails || !userDetails._id || !editingReview) {
+        Alert.alert("Error", "User not logged in or review not selected.");
+        return;
+      }
+
+      if (userRating < 1 || userRating > 5) {
+        Alert.alert("Error", "Please provide a rating between 1 and 5.");
+        return;
+      }
+
+      const payload = {
+        name: userDetails.fullName,
+        userId: userDetails._id,
+        rating: userRating,
+        comment: userComment,
+      };
+
+      const response = await axios.put(
+        `http://${IP}:5000/api/packages/${id}/feedback/${editingReview._id}`,
+        payload
+      );
+
+      console.log("Review updated successfully:", response.data);
+
+      // Reset fields and close modal
+      setUserRating(0);
+      setUserComment("");
+      setIsEditModalVisible(false);
+      setEditingReview(null);
+
+      // Refresh reviews
+      fetchReviews();
+    } catch (error) {
+      console.error("Error updating review:", error);
+      Alert.alert("Error", "Failed to update review. Please try again.");
+    }
+  };
+  const handleDeleteReview = async (review) => {
+    try {
+      if (!userDetails || !userDetails._id) {
+        Alert.alert("Error", "User not logged in.");
+        return;
+      }
+
+      Alert.alert(
+        "Delete Review",
+        "Are you sure you want to delete this review?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          { 
+            text: "Delete", 
+            onPress: async () => {
+              try {
+                const response = await axios.delete(
+                  `http://${IP}:5000/api/packages/${id}/feedback/${review._id}`,
+                  { data: { userId: userDetails._id } }
+                );
+                
+                console.log("Review deleted successfully:", response.data);
+                fetchReviews();
+              } catch (error) {
+                console.error("Error deleting review:", error);
+                Alert.alert("Error", "Failed to delete review. Please try again.");
+              }
+            },
+            style: "destructive"
+          }
+        ]
+      );
+    } catch (error) {
+      console.error("Error preparing to delete review:", error);
+    }
+  };
+
+ 
 
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
@@ -183,6 +330,13 @@ export default function PackageDetails() {
       >
         {/* Header */}
         <View className={`py-6 px-4 flex-row items-center ${bgColor}`}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons 
+              name="arrow-back" 
+              size={24} 
+              color={isDarkMode ? "white" : "black"} 
+            />
+          </TouchableOpacity>
           <Text className={`text-2xl font-bold flex-1 text-center ${textColor}`}>
             {name}
           </Text>
@@ -294,7 +448,12 @@ export default function PackageDetails() {
             {displayedReviews.length > 0 ? (
               <>
                 {displayedReviews.map((review, index) => (
-                  <ReviewItem key={index} review={review} />
+                  <ReviewItem 
+                    key={index} 
+                    review={review} 
+                    onEditPress={handleEditPress} 
+                    onDeletePress={handleDeleteReview}
+                  />
                 ))}
                 {reviews.length > 2 && (
                   <TouchableOpacity
@@ -316,7 +475,7 @@ export default function PackageDetails() {
         </View>
       </ScrollView>
 
-      {/* Comment Modal (Only for Students) */}
+      {/* Add Comment Modal */}
       {isStudent && (
         <Modal
           visible={isCommentModalVisible}
@@ -335,24 +494,16 @@ export default function PackageDetails() {
                 Add Your Feedback
               </Text>
 
-              {/* Rating Section */}
               <View className="flex-row items-center mb-4">
                 <Text className={`${textColor} mr-3`}>Rating:</Text>
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => setUserRating(index + 1)}
-                  >
-                    <Ionicons
-                      name={index < userRating ? "star" : "star-outline"}
-                      size={24}
-                      color={index < userRating ? "#FFD700" : "#C0C0C0"}
-                    />
-                  </TouchableOpacity>
-                ))}
+                <Rating 
+                  rating={userRating} 
+                  onPress={setUserRating} 
+                  size={24} 
+                  editable={true} 
+                />
               </View>
 
-              {/* Comment Input */}
               <TextInput
                 className={`p-4 rounded-xl ${cardBg} ${textColor}`}
                 placeholder="Write your comment..."
@@ -362,7 +513,6 @@ export default function PackageDetails() {
                 onChangeText={setUserComment}
               />
 
-              {/* Submit Button */}
               <TouchableOpacity
                 className={`mt-6 p-3 rounded-xl bg-[#F22E63] items-center`}
                 onPress={handleAddComment}
@@ -370,12 +520,67 @@ export default function PackageDetails() {
                 <Text className="text-white font-semibold">Submit</Text>
               </TouchableOpacity>
 
-              {/* Close Button */}
               <TouchableOpacity
                 className={`mt-4 p-3 rounded-xl ${cardBg} items-center`}
                 onPress={() => setIsCommentModalVisible(false)}
               >
-                <Text className={`${highlightColor} font-semibold`}>Close</Text>
+                <Text className={`${highlightColor} font-semibold`}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      )}
+
+      {/* Edit Review Modal */}
+      {isStudent && (
+        <Modal
+          visible={isEditModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsEditModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "padding"}
+            className="flex-1 justify-end"
+          >
+            <View
+              className={`p-6 rounded-t-3xl ${isDarkMode ? "bg-[#1E1E1E]" : "bg-white"}`}
+            >
+              <Text className={`text-xl font-bold mb-4 ${textColor}`}>
+                Edit Your Feedback
+              </Text>
+
+              <View className="flex-row items-center mb-4">
+                <Text className={`${textColor} mr-3`}>Rating:</Text>
+                <Rating 
+                  rating={userRating} 
+                  onPress={setUserRating} 
+                  size={24} 
+                  editable={true} 
+                />
+              </View>
+
+              <TextInput
+                className={`p-4 rounded-xl ${cardBg} ${textColor}`}
+                placeholder="Edit your comment..."
+                placeholderTextColor={secondaryTextColor}
+                multiline
+                value={userComment}
+                onChangeText={setUserComment}
+              />
+
+              <TouchableOpacity
+                className={`mt-6 p-3 rounded-xl bg-[#F22E63] items-center`}
+                onPress={handleUpdateReview}
+              >
+                <Text className="text-white font-semibold">Update</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className={`mt-4 p-3 rounded-xl ${cardBg} items-center`}
+                onPress={() => setIsEditModalVisible(false)}
+              >
+                <Text className={`${highlightColor} font-semibold`}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
