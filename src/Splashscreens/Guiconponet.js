@@ -2,7 +2,7 @@ import { View, Text, Image, TouchableOpacity, Dimensions } from "react-native";
 import { useState, useRef, useContext } from "react";
 import PagerView from "react-native-pager-view";
 import { LinearGradient } from "expo-linear-gradient";
-import { ThemeContext } from "../../context/ThemeContext"; // Import Theme Context
+import { ThemeContext } from "../../context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -33,8 +33,8 @@ const onboardingData = [
 export default function OnboardingScreen({ navigation }) {
   const [page, setPage] = useState(0);
   const pagerRef = useRef(null);
-  const { theme } = useContext(ThemeContext); // Get the theme
-  const isDarkMode = theme === "dark"; // Check if dark mode is active
+  const { theme } = useContext(ThemeContext);
+  const isDarkMode = theme === "dark";
 
   return (
     <View className={isDarkMode ? "bg-gray-900 flex-1" : "bg-white flex-1"}>

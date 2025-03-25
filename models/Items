@@ -17,60 +17,12 @@ const ItemSchema = new mongoose.Schema({
 //       required: true,
 //     },
 //   });
-
-const PackageSchema = new mongoose.Schema(
-  {
-    packageName: { type: String, required: true },
-    description: { type: String, required: true },
-    duration: { type: String, required: true },
-    rating: { type: Number, required: false, default: 0 }, // Average rating
-    price: { type: Number, required: true },
-    activities: { type: [String], required: true },
-    inclusions: { type: [String], required: true },
-    instructions: { type: String, required: true },
-    image: { type: String },
-    votes: { type: Number, default: 0 }, // Total votes for this package
-    votePercentage: { type: Number, default: 0 },
-    reviews: [
-      {
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: "Register", required: true }, // Reference to the user
-        rating: { type: Number, required: true, min: 1, max: 5 }, // Rating from 1 to 5
-        comment: { type: String, required: false }, // Optional comment
-        date: { type: Date, default: Date.now }, // Timestamp
-      },
-    ],
-  },
-  { timestamps: true }
-);
 const voteSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Register", required: true }, // ✅ Change String to ObjectId
   packageId: { type: mongoose.Schema.Types.ObjectId, ref: "Package", required: true }, // ✅ Change String to ObjectId
   createdAt: { type: Date, default: Date.now },
 });
 
-
-const RegisterSchema = new mongoose.Schema(
-  {
-    fullName: { type: String, required: true },
-    userName: { type: String, required: true, unique: true },
-    phone: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: {
-      type: String,
-      required: true,
-      enum: ["Student", "Student Leader", "HOD", "Industry Representative"],
-    },
-    gender: {
-      type: String,
-      required: true,
-      enum: ["Male", "Female", "Other"], // Ensure gender is one of these values
-    },
-    studentID: { type: String, unique: true, sparse: true }, // Unique but ignored if null
-    industryID: { type: String, unique: true, sparse: true }, // Unique but ignored if null
-  },
-  { timestamps: true }
-);
 const RequestSchema = new mongoose.Schema({
   Obj_id: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Register" },
   role: { type: String, required: true },
@@ -94,12 +46,66 @@ const RequestSchema = new mongoose.Schema({
   status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" }
 });
 
-// const StudentSchema = new mongoose.Schema({
-//   studentID: { type: String, required: true, unique: true },
-//   fullName: { type: String, required: true },
-//   department: { type: String, required: true },
-//   studentRep: { type: String, required: true }, // Student Representative
-// });
+const PackageSchema = new mongoose.Schema(
+  {
+    packageName: { type: String, required: true },
+    description: { type: String, required: true },
+    duration: { type: String, required: true },
+    rating: { type: Number, required: false, default: 0 }, // Average rating
+    price: { type: Number, required: true },
+    activities: { type: [String], required: true },
+    inclusions: { type: [String], required: true },
+    instructions: { type: String, required: true },
+    image: { type: String },
+    votes: { type: Number, default: 0 }, // Total votes for this package
+    votePercentage: { type: Number, default: 0 },
+    reviews: [
+      {
+        fullName: { type: String, required: true },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "Register", required: true },
+        rating: { type: Number, required: true, min: 1, max: 5 },
+        comment: { type: String, required: false },
+        date: { type: Date, default: Date.now },
+        user: { // Changed from userProfile to user
+          _id: { type: mongoose.Schema.Types.ObjectId, ref: "Register" },
+          fullName: { type: String },
+          profileImage: { type: String }
+        }
+      }
+    ]
+  },
+  { timestamps: true }
+);
+
+
+const RegisterSchema = new mongoose.Schema(
+  {
+    fullName: { type: String, required: true },
+    userName: { type: String, required: true, unique: true },
+    phone: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: {
+      type: String,
+      required: true,
+      enum: ["Student", "Student Leader", "HOD", "Industry Representative"],
+    },
+    gender: {
+      type: String,
+      required: true,
+      enum: ["Male", "Female", "Other"],
+    },
+    studentID: { type: String, unique: true, sparse: true },
+    industryID: { type: String, unique: true, sparse: true },
+    // Add this profile reference field
+    profile: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Profile"
+    }
+  },
+  { timestamps: true }
+);
+
 
 const ProfileSchema = new mongoose.Schema({
   name: { type: String, required: true },

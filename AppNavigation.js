@@ -46,7 +46,6 @@ import VotedPersonsScreen from "./src/Student/VotedPersonsScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-
 function HeaderMenu({ navigation, logout }) {
   const [menuVisible, setMenuVisible] = React.useState(false);
   const openMenu = () => setMenuVisible(true);
@@ -75,7 +74,6 @@ function HeaderMenu({ navigation, logout }) {
     </Menu>
   );
 }
-
 export default function AppNavigation() {
   const { theme } = useContext(ThemeContext);
   const isDarkMode = theme === "dark" ? DarkTheme : DefaultTheme;
