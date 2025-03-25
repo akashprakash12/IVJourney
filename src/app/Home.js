@@ -43,7 +43,10 @@ export default function HomeScreen() {
             activities: pkg.activities || [],
             inclusions: pkg.inclusions || "Not specified",
             instructions: pkg.instructions || "No instructions available",
-            image: pkg.image.startsWith("http") ? pkg.image : `http://${IP}:5000/uploads/${pkg.image}`,
+            image: pkg.image && pkg.image.startsWith("http") 
+            ? pkg.image 
+            : `http://${IP}:5000/uploads/${pkg.image}`,
+          
             votes: pkg.votes || 0, // Total votes for this package
             votePercentage: pkg.votePercentage || 0, // Percentage of votes
           })));
