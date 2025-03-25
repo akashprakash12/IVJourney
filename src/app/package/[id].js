@@ -49,7 +49,7 @@ const DetailSection = ({ title, children, textColor }) => {
 };
 
 // Reusable ReviewItem Component
-const ReviewItem = ({ review, onEditPress }) => {
+const ReviewItem = ({ review, onEditPress, onDeletePress }) => {
   const { theme } = useContext(ThemeContext);
   const { userDetails } = useContext(AuthContext);
   const isDarkMode = theme === "dark";
@@ -93,12 +93,19 @@ const ReviewItem = ({ review, onEditPress }) => {
         <View className="flex-row items-center">
           <Rating rating={review.rating} />
           {isCurrentUserReview && (
-            <TouchableOpacity 
-              onPress={() => onEditPress(review)}
-              className="ml-2"
-            >
-              <Ionicons name="create-outline" size={18} color={isDarkMode ? "#FFFFFF" : "#000000"} />
-            </TouchableOpacity>
+            <View className="flex-row ml-2">
+              <TouchableOpacity 
+                onPress={() => onEditPress(review)}
+                className="mr-2"
+              >
+                <Ionicons name="create-outline" size={18} color={isDarkMode ? "#FFFFFF" : "#000000"} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => onDeletePress(review)}
+              >
+                <Ionicons name="trash-outline" size={18} color={isDarkMode ? "#FF6347" : "#FF0000"} />
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
@@ -212,8 +219,12 @@ export default function PackageDetails() {
       // Refresh reviews
       fetchReviews();
     } catch (error) {
-      console.error("Error submitting feedback:", error);
-      Alert.alert("Error", "Failed to submit feedback. Please try again.");
+      if (error.response?.status === 409) {
+        Alert.alert("Already Submitted", "You've already submitted feedback for this package.");
+        setHasSubmittedReview(true);
+      } else {
+        Alert.alert("Error", "Failed to submit feedback. Please try again.");
+      }
     }
   };
 
@@ -265,6 +276,47 @@ export default function PackageDetails() {
       Alert.alert("Error", "Failed to update review. Please try again.");
     }
   };
+  const handleDeleteReview = async (review) => {
+    try {
+      if (!userDetails || !userDetails._id) {
+        Alert.alert("Error", "User not logged in.");
+        return;
+      }
+
+      Alert.alert(
+        "Delete Review",
+        "Are you sure you want to delete this review?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          { 
+            text: "Delete", 
+            onPress: async () => {
+              try {
+                const response = await axios.delete(
+                  `http://${IP}:5000/api/packages/${id}/feedback/${review._id}`,
+                  { data: { userId: userDetails._id } }
+                );
+                
+                console.log("Review deleted successfully:", response.data);
+                fetchReviews();
+              } catch (error) {
+                console.error("Error deleting review:", error);
+                Alert.alert("Error", "Failed to delete review. Please try again.");
+              }
+            },
+            style: "destructive"
+          }
+        ]
+      );
+    } catch (error) {
+      console.error("Error preparing to delete review:", error);
+    }
+  };
+
+ 
 
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
@@ -400,6 +452,7 @@ export default function PackageDetails() {
                     key={index} 
                     review={review} 
                     onEditPress={handleEditPress} 
+                    onDeletePress={handleDeleteReview}
                   />
                 ))}
                 {reviews.length > 2 && (

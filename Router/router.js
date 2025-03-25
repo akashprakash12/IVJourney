@@ -221,103 +221,143 @@ router.post("/packages/:packageId/feedback", async (req, res) => {
   const { packageId } = req.params;
   const { userId, rating, comment, name } = req.body;
 
-  try {
-    // Validate input
-    if (!userId || !rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ 
-        error: "Rating (1-5 stars) and valid userId are required",
-        code: "MISSING_REQUIRED_FIELDS"
-      });
-    }
-
-    // Validate ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(userId) || 
-        !mongoose.Types.ObjectId.isValid(packageId)) {
-      return res.status(400).json({ 
-        error: "Invalid ID format",
-        code: "INVALID_ID_FORMAT"
-      });
-    }
-
-    // Find package and user with profile data
-    const [package, user] = await Promise.all([
-      Package.findById(packageId),
-      Register.findById(userId).populate({
-        path: 'profile',
-        model: 'Profile' // Explicitly specify the model
-      })
-    ]);
-
-    // Debug logs
-    console.log('Package:', package?._id);
-    console.log('User:', user?._id);
-    console.log('Profile image path:', user?.profile?.profileImage);
-
-    if (!package) {
-      return res.status(404).json({ 
-        error: "Package not found",
-        code: "PACKAGE_NOT_FOUND"
-      });
-    }
-    
-    if (!user) {
-      return res.status(404).json({ 
-        error: "User not found",
-        code: "USER_NOT_FOUND",
-        details: `No user found with id: ${userId}`
-      });
-    }
-
-    // Check for existing feedback
-    const hasExistingReview = package.reviews.some(r => 
-      r.userId.toString() === userId.toString()
-    );
-    
-    if (hasExistingReview) {
-      return res.status(400).json({ 
-        error: "You've already reviewed this package",
-        code: "DUPLICATE_FEEDBACK" 
-      });
-    }
-
-    // Create new review
-    const newReview = {
-      userId: user._id,
-      fullName: name || user.fullName,
-      rating,
-      date: new Date(),
-      user: {
-        _id: user._id,
-        fullName: name || user.fullName,
-        profileImage: user.profile?.profileImage 
-          ? user.profile.profileImage
-          : null
-      },
-      ...(comment && { comment: comment.trim() })
-    };
-
-    // Update package
-    package.reviews.push(newReview);
-    package.rating = calculateAverageRating(package.reviews);
-    await package.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Feedback submitted successfully",
-      review: newReview,
-      package: formatPackage(package)
+  // Validate input
+  if (!userId || !rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ 
+      error: "Rating (1-5 stars) and valid userId are required",
+      code: "MISSING_REQUIRED_FIELDS"
     });
+  }
+
+  // Validate ObjectId format
+  if (!mongoose.Types.ObjectId.isValid(userId) || 
+      !mongoose.Types.ObjectId.isValid(packageId)) {
+    return res.status(400).json({ 
+      error: "Invalid ID format",
+      code: "INVALID_ID_FORMAT"
+    });
+  }
+
+  try {
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Find package and user with profile data
+      const [package, user] = await Promise.all([
+        Package.findById(packageId).session(session),
+        Register.findById(userId).populate({
+          path: 'profile',
+          model: 'Profile'
+        }).session(session)
+      ]);
+
+      if (!package) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ 
+          error: "Package not found",
+          code: "PACKAGE_NOT_FOUND"
+        });
+      }
+      
+      if (!user) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ 
+          error: "User not found",
+          code: "USER_NOT_FOUND",
+          details: `No user found with id: ${userId}`
+        });
+      }
+
+      // Check for existing feedback using the user's ID
+      const existingReviewIndex = package.reviews.findIndex(r => 
+        r.userId.toString() === userId.toString()
+      );
+
+      if (existingReviewIndex !== -1) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(409).json({  // Changed to 409 Conflict
+          error: "You've already reviewed this package",
+          code: "DUPLICATE_FEEDBACK",
+          existingReview: package.reviews[existingReviewIndex] // Return existing review
+        });
+      }
+
+      // Create new review
+      const newReview = {
+        userId: user._id,
+        fullName: name || user.fullName,
+        rating: Number(rating), // Ensure it's a number
+        date: new Date(),
+        user: {
+          _id: user._id,
+          fullName: name || user.fullName,
+          profileImage: user.profile?.profileImage || null // Simplified
+        },
+        ...(comment && { comment: comment.trim() })
+      };
+
+      // Update package
+      package.reviews.push(newReview);
+      package.rating = calculateAverageRating(package.reviews);
+      
+      await package.save({ session });
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // Format the response
+      const response = {
+        success: true,
+        message: "Feedback submitted successfully",
+        review: newReview,
+        package: formatPackage(package)
+      };
+
+      // Debug log for successful submission
+      console.log('Feedback submitted:', {
+        package: package._id,
+        user: user._id,
+        rating: newReview.rating
+      });
+
+      return res.status(201).json(response);
+
+    } catch (error) {
+      // If any error occurs, abort the transaction
+      await session.abortTransaction();
+      session.endSession();
+      throw error; // This will be caught by the outer catch
+    }
 
   } catch (error) {
     console.error("Feedback submission error:", error);
-    res.status(500).json({ 
+    
+    // Handle duplicate key error (might occur in race conditions)
+    if (error.code === 11000 || error.message.includes('duplicate')) {
+      return res.status(409).json({
+        error: "Duplicate feedback detected",
+        code: "DUPLICATE_FEEDBACK"
+      });
+    }
+
+    const errorResponse = {
       error: "Internal server error",
-      code: "SERVER_ERROR",
-      ...(process.env.NODE_ENV === 'development' && { 
-        stack: error.stack,
-        message: error.message 
-      })
-    });
+      code: "SERVER_ERROR"
+    };
+
+    // Include stack trace in development
+    if (process.env.NODE_ENV === 'development') {
+      errorResponse.stack = error.stack;
+      errorResponse.message = error.message;
+    }
+
+    return res.status(500).json(errorResponse);
   }
 });
 // Helper functions
@@ -402,6 +442,65 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
 
   } catch (error) {
     console.error("Error updating review:", error);
+    res.status(500).json({ 
+      error: "Internal server error",
+      code: "SERVER_ERROR"
+    });
+  }
+});
+// Delete feedback for a package
+router.delete("/packages/:packageId/feedback/:reviewId", async (req, res) => {
+  try {
+    const { packageId, reviewId } = req.params;
+    const { userId } = req.body;
+
+    // Validate input
+    if (!userId) {
+      return res.status(400).json({ 
+        error: "Valid userId is required",
+        code: "MISSING_REQUIRED_FIELDS"
+      });
+    }
+
+    // Find the package
+    const package = await Package.findById(packageId);
+    if (!package) {
+      return res.status(404).json({ 
+        error: "Package not found",
+        code: "PACKAGE_NOT_FOUND"
+      });
+    }
+
+    // Find the review to delete
+    const reviewIndex = package.reviews.findIndex(
+      r => r._id.toString() === reviewId && r.userId.toString() === userId
+    );
+
+    if (reviewIndex === -1) {
+      return res.status(404).json({ 
+        error: "Review not found or not owned by user",
+        code: "REVIEW_NOT_FOUND"
+      });
+    }
+
+    // Remove the review
+    package.reviews.splice(reviewIndex, 1);
+
+    // Recalculate average rating
+    package.rating = package.reviews.length > 0 
+      ? package.reviews.reduce((sum, r) => sum + r.rating, 0) / package.reviews.length
+      : 0;
+
+    await package.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Review deleted successfully",
+      package: formatPackage(package)
+    });
+
+  } catch (error) {
+    console.error("Error deleting review:", error);
     res.status(500).json({ 
       error: "Internal server error",
       code: "SERVER_ERROR"
