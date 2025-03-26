@@ -120,6 +120,19 @@ const ProfileSchema = new mongoose.Schema({
 });
 
 
+const UndertakingSchema = new mongoose.Schema({
+  studentName: { type: String, required: true },
+  semester: { type: String, required: true },
+  branch: { type: String, required: true },
+  rollNo: { type: String, required: true, unique: true },
+  parentName: { type: String, required: true },
+  placesVisited: { type: String, required: true },
+  tourPeriod: { type: String, required: true },
+  facultyDetails: { type: String, required: true },
+  studentSignature: { type: String, required: true }, // Stores file path
+  parentSignature: { type: String, required: true },  // Stores file path
+  submittedAt: { type: Date, default: Date.now }
+});
 
 
 
@@ -131,7 +144,7 @@ module.exports = {
   Vote:mongoose.model("Vote", voteSchema),
   Register: mongoose.model("Register", RegisterSchema),
   Request: mongoose.model("Request", RequestSchema),
-
+  Undertaking:mongoose.model('Undertaking', UndertakingSchema),
   Profile: mongoose.model("Profile", ProfileSchema),
 
 };

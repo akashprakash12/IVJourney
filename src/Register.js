@@ -163,7 +163,7 @@ export default function Register({ navigation }) {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      Alert.alert("Success", response.data.message);
+      Alert.alert("Success", "Registration complete! Please check your email.");
       navigation.navigate("Login");
     } catch (error) {
       console.error("Registration Error:", error.response?.data || error);
