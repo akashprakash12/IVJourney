@@ -133,7 +133,52 @@ const UndertakingSchema = new mongoose.Schema({
   parentSignature: { type: String, required: true },  // Stores file path
   submittedAt: { type: Date, default: Date.now }
 });
+// Temporary verification codes (expire after 15 minutes)
+const tempVerificationSchema = new mongoose.Schema({
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    trim: true,
+    lowercase: true,
+    validate: {
+      validator: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+      message: "Invalid email format"
+    }
+  },
+  code: {
+    type: String,
+    required: true
+  },
+  attempts: {
+    type: Number,
+    default: 0
+  },
+  expiresAt: {
+    type: Date,
+    required: true,
+    index: { expires: 0 } // TTL index for auto-deletion
+  }
+}, { timestamps: true });
 
+// Verified emails collection
+const verifiedEmailSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
+  verifiedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+
+// Auto-delete expired records (TTL index)
+tempVerificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 
 
@@ -146,5 +191,8 @@ module.exports = {
   Request: mongoose.model("Request", RequestSchema),
   Undertaking:mongoose.model('Undertaking', UndertakingSchema),
   Profile: mongoose.model("Profile", ProfileSchema),
+  TempVerification:mongoose.model('TempVerification', tempVerificationSchema),
+  VerifiedEmail : mongoose.model('VerifiedEmail', verifiedEmailSchema),
+
 
 };

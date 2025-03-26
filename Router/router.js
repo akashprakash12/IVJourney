@@ -12,7 +12,9 @@ const {
   Request,
   Profile,
   Vote,
-  Undertaking
+  Undertaking,
+  TempVerification,
+  VerifiedEmail 
 } = require("../models/Items");
 const multer = require("multer");
 const path = require("path");
@@ -22,6 +24,8 @@ const { sendWelcomeEmail } = require("../context/emailService");
 // At the top of your router.js or server file
 const dns = require('dns');
 const validator = require('validator');
+const { sendVerificationEmail } = require("../context/emailverifie");
+
 
 const IP = process.env.IP;
 
@@ -555,6 +559,11 @@ router.post("/register", async (req, res) => {
       userData.industryID = `IND-${Math.floor(10000 + Math.random() * 90000)}`;
     }
 
+    const isVerified = await VerifiedEmail.exists({ email });
+    if (!isVerified) {
+      return res.status(400).json({ error: "Email not verified" });
+    }
+
     // 9. Save user
     const newUser = new Register(userData);
     await newUser.save();
@@ -562,6 +571,8 @@ router.post("/register", async (req, res) => {
     // 10. Send welcome email (don't await to avoid blocking)
     sendWelcomeEmail(newUser.email, newUser.fullName, newUser.role)
       .catch(err => console.error('Email sending failed:', err));
+    // Cleanup verified email record (optional)
+    await VerifiedEmail.deleteOne({ email });
 
     // 11. Return success response
     res.status(201).json({ 
@@ -599,6 +610,83 @@ router.post("/register", async (req, res) => {
     res.status(500).json({ 
       error: "Registration failed. Please try again later." 
     });
+  }
+});
+// In your backend routes
+router.post('/send-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate email format
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    // Check if email already registered
+    const existingUser = await Register.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+console.log(code);
+
+    // Store in temporary collection
+    await TempVerification.findOneAndUpdate(
+      { email },
+      { code, expiresAt, attempts: 0 },
+      { upsert: true, new: true }
+    );
+
+    // Send email
+    await sendVerificationEmail(email, code);
+
+    res.json({ success: true, message: "Verification code sent" });
+  } catch (error) {
+    console.error("Verification error:", error);
+    res.status(500).json({ error: "Failed to send verification code" });
+  }
+});
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    // Find the verification record
+    const verification = await TempVerification.findOne({ email });
+    
+    if (!verification) {
+      return res.status(400).json({ error: "No verification request found" });
+    }
+
+    // Check attempts
+    if (verification.attempts >= 3) {
+      return res.status(429).json({ error: "Too many attempts" });
+    }
+
+    // Verify code
+    if (verification.code !== code) {
+      await TempVerification.updateOne(
+        { email },
+        { $inc: { attempts: 1 } }
+      );
+      return res.status(400).json({ error: "Invalid verification code" });
+    }
+
+    // Check expiry
+    if (verification.expiresAt < new Date()) {
+      return res.status(400).json({ error: "Verification code expired" });
+    }
+
+    // Mark as verified
+    await VerifiedEmail.create({ email });
+    await TempVerification.deleteOne({ email });
+
+    res.json({ success: true, message: "Email verified successfully" });
+  } catch (error) {
+    console.error("Verification error:", error);
+    res.status(500).json({ error: "Verification failed" });
   }
 });
 
