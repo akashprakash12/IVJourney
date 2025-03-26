@@ -14,7 +14,8 @@ const {
   Vote,
   Undertaking,
   TempVerification,
-  VerifiedEmail 
+  VerifiedEmail,
+  VerifiedPhone
 } = require("../models/Items");
 const multer = require("multer");
 const path = require("path");
@@ -563,6 +564,13 @@ router.post("/register", async (req, res) => {
     if (!isVerified) {
       return res.status(400).json({ error: "Email not verified" });
     }
+    const isPhoneVerified = await VerifiedPhone.exists({ phone });
+    if (!isPhoneVerified) {
+      return res.status(400).json({ 
+        error: "Phone number not verified",
+        field: "phone"
+      });
+    }
 
     // 9. Save user
     const newUser = new Register(userData);
@@ -573,6 +581,7 @@ router.post("/register", async (req, res) => {
       .catch(err => console.error('Email sending failed:', err));
     // Cleanup verified email record (optional)
     await VerifiedEmail.deleteOne({ email });
+    await VerifiedPhone.deleteOne({ phone });
 
     // 11. Return success response
     res.status(201).json({ 
@@ -613,7 +622,7 @@ router.post("/register", async (req, res) => {
   }
 });
 // In your backend routes
-router.post('/send-verification', async (req, res) => {
+router.post('/send-email-verification', async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -631,19 +640,28 @@ router.post('/send-verification', async (req, res) => {
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-console.log(code);
 
     // Store in temporary collection
     await TempVerification.findOneAndUpdate(
       { email },
-      { code, expiresAt, attempts: 0 },
+      { code, expiresAt, attempts: 0, $unset: { phone: "" } },
       { upsert: true, new: true }
     );
 
-    // Send email
-    await sendVerificationEmail(email, code);
+    console.log('Verification code generated:', code);
 
-    res.json({ success: true, message: "Verification code sent" });
+    // Send email
+    try {
+      await sendVerificationEmail(email, code);
+      console.log('Verification email sent successfully to:', email);
+      return res.json({ success: true, message: "Verification code sent" });
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Clean up the verification record if email fails
+      await TempVerification.deleteOne({ email });
+      return res.status(500).json({ error: "Failed to send verification email" });
+    }
+
   } catch (error) {
     console.error("Verification error:", error);
     res.status(500).json({ error: "Failed to send verification code" });
@@ -687,6 +705,100 @@ router.post('/verify-email', async (req, res) => {
   } catch (error) {
     console.error("Verification error:", error);
     res.status(500).json({ error: "Verification failed" });
+  }
+});
+// Send phone verification code
+router.post('/send-phone-verification', async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!/^\d{10}$/.test(phone)) {
+      return res.status(400).json({ error: "Invalid phone number" });
+    }
+
+    // Check if phone already registered
+    const existingUser = await Register.findOne({ phone });
+    if (existingUser) {
+      return res.status(400).json({ error: "Phone number already registered" });
+    }
+
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
+
+    // Store in verification collection - only phone field
+    await TempVerification.findOneAndUpdate(
+      { phone },
+      { 
+        phone,
+        code, 
+        expiresAt, 
+        attempts: 0,
+        $unset: { email: "" } // Better way to remove the field
+      },
+      { upsert: true, new: true }
+    );
+
+    // In production, send SMS here (e.g., using Twilio)
+    console.log(`SMS verification code for ${phone}: ${code}`);
+
+    res.json({ success: true, message: "SMS verification code sent" });
+  } catch (error) {
+    console.error("Phone verification error:", error);
+    res.status(500).json({ error: "Failed to send SMS code" });
+  }
+});
+
+// Verify phone code
+router.post('/verify-phone', async (req, res) => {
+  try {
+    const { phone, code } = req.body;
+
+    // Basic validation
+    if (!phone || !code) {
+      return res.status(400).json({ error: "Phone and code are required" });
+    }
+
+    // Find the verification record
+    const verification = await TempVerification.findOne({ phone });
+    
+    if (!verification) {
+      return res.status(400).json({ error: "No verification request found for this phone" });
+    }
+
+    // Check attempts
+    if (verification.attempts >= 3) {
+      return res.status(429).json({ error: "Too many attempts. Please request a new code." });
+    }
+
+    // Verify code
+    if (verification.code !== code) {
+      await TempVerification.updateOne(
+        { phone },
+        { $inc: { attempts: 1 } }
+      );
+      const remainingAttempts = 3 - (verification.attempts + 1);
+      return res.status(400).json({ 
+        error: `Invalid verification code. ${remainingAttempts} attempts remaining.`
+      });
+    }
+
+    // Check expiry
+    if (verification.expiresAt < new Date()) {
+      return res.status(400).json({ error: "Verification code has expired" });
+    }
+
+    // Mark as verified by deleting the record
+    await TempVerification.deleteOne({ phone });
+
+    res.json({ 
+      success: true, 
+      message: "Phone number verified successfully",
+      phone 
+    });
+  } catch (error) {
+    console.error("Phone verification error:", error);
+    res.status(500).json({ error: "Phone verification failed" });
   }
 });
 

@@ -32,11 +32,18 @@ export default function Register({ navigation }) {
   const [studentID, setStudentID] = useState("");
   const [industryID, setIndustryID] = useState("");
   const [gender, setGender] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
+  
+  // Verification States
+  const [emailVerificationCode, setEmailVerificationCode] = useState("");
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
   const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const [isSendingCode, setIsSendingCode] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [showVerificationInput, setShowVerificationInput] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [isSendingEmailCode, setIsSendingEmailCode] = useState(false);
+  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Password Visibility
@@ -53,7 +60,8 @@ export default function Register({ navigation }) {
     confirmPassword: "",
     role: "",
     gender: "",
-    verification: ""
+    emailVerification: "",
+    phoneVerification: ""
   });
 
   // Generate Random ID
@@ -90,51 +98,101 @@ export default function Register({ navigation }) {
     return password.length >= 8;
   };
 
-  const sendVerificationCode = async () => {
+  // Email Verification Functions
+  const sendEmailVerificationCode = async () => {
     if (!validateEmail(email)) {
       setErrors(prev => ({ ...prev, email: "Invalid email address" }));
       return;
     }
 
-    setIsSendingCode(true);
+    setIsSendingEmailCode(true);
     try {
       const response = await axios.post(
-        `http://${IP}:5000/api/send-verification`, 
+        `http://${IP}:5000/api/send-email-verification`, 
         { email }
       );
-      setShowVerificationInput(true);
-      setErrors(prev => ({ ...prev, email: "", verification: "" }));
-      Alert.alert("Success", "Verification code sent to your email");
+      setShowEmailVerification(true);
+      setErrors(prev => ({ ...prev, email: "", emailVerification: "" }));
+      Alert.alert("Success", "Email verification code sent");
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Failed to send verification code";
       setErrors(prev => ({ ...prev, email: errorMessage }));
       Alert.alert("Error", errorMessage);
     } finally {
-      setIsSendingCode(false);
+      setIsSendingEmailCode(false);
     }
   };
 
   const verifyEmailCode = async () => {
-    if (!verificationCode) {
-      setErrors(prev => ({ ...prev, verification: "Verification code is required" }));
+    if (!emailVerificationCode) {
+      setErrors(prev => ({ ...prev, emailVerification: "Verification code is required" }));
       return;
     }
 
-    setIsVerifying(true);
+    setIsVerifyingEmail(true);
     try {
       const response = await axios.post(
         `http://${IP}:5000/api/verify-email`,
-        { email, code: verificationCode }
+        { email, code: emailVerificationCode }
       );
       setIsEmailVerified(true);
-      setShowVerificationInput(false);
-      setErrors(prev => ({ ...prev, verification: "" }));
+      setShowEmailVerification(false);
+      setErrors(prev => ({ ...prev, emailVerification: "" }));
       Alert.alert("Success", "Email verified successfully");
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Invalid verification code";
-      setErrors(prev => ({ ...prev, verification: errorMessage }));
+      setErrors(prev => ({ ...prev, emailVerification: errorMessage }));
     } finally {
-      setIsVerifying(false);
+      setIsVerifyingEmail(false);
+    }
+  };
+
+  // Phone Verification Functions
+  const sendPhoneVerificationCode = async () => {
+    if (!validatePhone(phone)) {
+      setErrors(prev => ({ ...prev, phone: "Invalid phone number" }));
+      return;
+    }
+
+    setIsSendingPhoneCode(true);
+    try {
+      const response = await axios.post(
+        `http://${IP}:5000/api/send-phone-verification`, 
+        { phone }
+      );
+      setShowPhoneVerification(true);
+      setErrors(prev => ({ ...prev, phone: "", phoneVerification: "" }));
+      Alert.alert("Success", "SMS verification code sent");
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || "Failed to send SMS code";
+      setErrors(prev => ({ ...prev, phone: errorMessage }));
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsSendingPhoneCode(false);
+    }
+  };
+
+  const verifyPhoneCode = async () => {
+    if (!phoneVerificationCode) {
+      setErrors(prev => ({ ...prev, phoneVerification: "Verification code is required" }));
+      return;
+    }
+
+    setIsVerifyingPhone(true);
+    try {
+      const response = await axios.post(
+        `http://${IP}:5000/api/verify-phone`,
+        { phone, code: phoneVerificationCode }
+      );
+      setIsPhoneVerified(true);
+      setShowPhoneVerification(false);
+      setErrors(prev => ({ ...prev, phoneVerification: "" }));
+      Alert.alert("Success", "Phone number verified");
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || "Invalid verification code";
+      setErrors(prev => ({ ...prev, phoneVerification: errorMessage }));
+    } finally {
+      setIsVerifyingPhone(false);
     }
   };
 
@@ -149,7 +207,8 @@ export default function Register({ navigation }) {
       confirmPassword: "",
       role: "",
       gender: "",
-      verification: ""
+      emailVerification: "",
+      phoneVerification: ""
     });
 
     // Validate fields
@@ -168,6 +227,9 @@ export default function Register({ navigation }) {
     } else if (!validatePhone(phone)) {
       setErrors((prev) => ({ ...prev, phone: "Invalid phone number." }));
       isValid = false;
+    } else if (!isPhoneVerified) {
+      setErrors((prev) => ({ ...prev, phoneVerification: "Phone must be verified." }));
+      isValid = false;
     }
     if (!email) {
       setErrors((prev) => ({ ...prev, email: "Email is required." }));
@@ -176,7 +238,7 @@ export default function Register({ navigation }) {
       setErrors((prev) => ({ ...prev, email: "Invalid email address." }));
       isValid = false;
     } else if (!isEmailVerified) {
-      setErrors((prev) => ({ ...prev, verification: "Email must be verified." }));
+      setErrors((prev) => ({ ...prev, emailVerification: "Email must be verified." }));
       isValid = false;
     }
     if (!password) {
@@ -323,11 +385,10 @@ export default function Register({ navigation }) {
             </View>
           )}
 
-          {/* Input Fields */}
+          {/* Basic Info Fields */}
           {[
             { label: "Full Name", value: fullName, setter: setFullName, icon: <User size={20} color={isDarkMode ? "#999" : "#777"} />, error: errors.fullName },
             { label: "User Name", value: userName, setter: setUserName, icon: <User size={20} color={isDarkMode ? "#999" : "#777"} />, error: errors.userName },
-            { label: "Phone", value: phone, setter: setPhone, icon: <Smartphone size={20} color={isDarkMode ? "#999" : "#777"} />, keyboardType: "phone-pad", error: errors.phone },
           ].map((input, index) => (
             <View key={index}>
               <View className="flex-row items-center border-b p-2 mb-4">
@@ -337,7 +398,6 @@ export default function Register({ navigation }) {
                   placeholderTextColor={isDarkMode ? "#DDD" : "#777"}
                   value={input.value}
                   onChangeText={input.setter}
-                  keyboardType={input.keyboardType || "default"}
                   className={`ml-3 flex-1 text-lg ${isDarkMode ? "text-white" : "text-black"}`}
                 />
               </View>
@@ -345,8 +405,73 @@ export default function Register({ navigation }) {
             </View>
           ))}
 
-          {/* Email Field with Verification */}
+          {/* Phone Field with Verification */}
           <View>
+            <View className="flex-row items-center border-b p-2 mb-1">
+              <Smartphone size={20} color={isDarkMode ? "#999" : "#777"} />
+              <TextInput
+                placeholder="Phone Number"
+                placeholderTextColor={isDarkMode ? "#DDD" : "#777"}
+                value={phone}
+                onChangeText={(text) => {
+                  setPhone(text);
+                  setIsPhoneVerified(false);
+                  setShowPhoneVerification(false);
+                  setErrors(prev => ({ ...prev, phone: "", phoneVerification: "" }));
+                }}
+                keyboardType="phone-pad"
+                className={`ml-3 flex-1 text-lg ${isDarkMode ? "text-white" : "text-black"}`}
+                editable={!isPhoneVerified}
+              />
+              {!isPhoneVerified ? (
+                <TouchableOpacity 
+                  onPress={sendPhoneVerificationCode}
+                  disabled={isSendingPhoneCode || !validatePhone(phone)}
+                  className="ml-2 p-1"
+                >
+                  {isSendingPhoneCode ? (
+                    <ActivityIndicator size="small" color="#F22E63" />
+                  ) : (
+                    <Text className="text-primary font-medium">Verify</Text>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <CheckCircle size={20} color="#4CAF50" className="ml-2" />
+              )}
+            </View>
+            {errors.phone && <Text className="text-red-500 text-sm mt-1">{errors.phone}</Text>}
+          </View>
+
+          {/* Phone Verification Code Input */}
+          {showPhoneVerification && !isPhoneVerified && (
+            <View className="mt-2">
+              <View className="flex-row items-center border-b p-2 mb-1">
+                <TextInput
+                  placeholder="Enter SMS verification code"
+                  placeholderTextColor={isDarkMode ? "#DDD" : "#777"}
+                  value={phoneVerificationCode}
+                  onChangeText={setPhoneVerificationCode}
+                  keyboardType="number-pad"
+                  className={`ml-3 flex-1 text-lg ${isDarkMode ? "text-white" : "text-black"}`}
+                />
+                <TouchableOpacity 
+                  onPress={verifyPhoneCode}
+                  disabled={isVerifyingPhone}
+                  className="ml-2 p-2 bg-primary rounded"
+                >
+                  {isVerifyingPhone ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text className="text-white font-medium">Submit</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+              {errors.phoneVerification && <Text className="text-red-500 text-sm mt-1">{errors.phoneVerification}</Text>}
+            </View>
+          )}
+
+          {/* Email Field with Verification */}
+          <View className="mt-4">
             <View className="flex-row items-center border-b p-2 mb-1">
               <Mail size={20} color={isDarkMode ? "#999" : "#777"} />
               <TextInput
@@ -356,8 +481,8 @@ export default function Register({ navigation }) {
                 onChangeText={(text) => {
                   setEmail(text);
                   setIsEmailVerified(false);
-                  setShowVerificationInput(false);
-                  setErrors(prev => ({ ...prev, email: "", verification: "" }));
+                  setShowEmailVerification(false);
+                  setErrors(prev => ({ ...prev, email: "", emailVerification: "" }));
                 }}
                 keyboardType="email-address"
                 className={`ml-3 flex-1 text-lg ${isDarkMode ? "text-white" : "text-black"}`}
@@ -365,11 +490,11 @@ export default function Register({ navigation }) {
               />
               {!isEmailVerified ? (
                 <TouchableOpacity 
-                  onPress={sendVerificationCode}
-                  disabled={isSendingCode || !validateEmail(email)}
+                  onPress={sendEmailVerificationCode}
+                  disabled={isSendingEmailCode || !validateEmail(email)}
                   className="ml-2 p-1"
                 >
-                  {isSendingCode ? (
+                  {isSendingEmailCode ? (
                     <ActivityIndicator size="small" color="#F22E63" />
                   ) : (
                     <Text className="text-primary font-medium">Verify</Text>
@@ -382,31 +507,31 @@ export default function Register({ navigation }) {
             {errors.email && <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>}
           </View>
 
-          {/* Verification Code Input */}
-          {showVerificationInput && !isEmailVerified && (
+          {/* Email Verification Code Input */}
+          {showEmailVerification && !isEmailVerified && (
             <View className="mt-2">
               <View className="flex-row items-center border-b p-2 mb-1">
                 <TextInput
-                  placeholder="Enter verification code"
+                  placeholder="Enter email verification code"
                   placeholderTextColor={isDarkMode ? "#DDD" : "#777"}
-                  value={verificationCode}
-                  onChangeText={setVerificationCode}
+                  value={emailVerificationCode}
+                  onChangeText={setEmailVerificationCode}
                   keyboardType="number-pad"
                   className={`ml-3 flex-1 text-lg ${isDarkMode ? "text-white" : "text-black"}`}
                 />
                 <TouchableOpacity 
                   onPress={verifyEmailCode}
-                  disabled={isVerifying}
+                  disabled={isVerifyingEmail}
                   className="ml-2 p-2 bg-primary rounded"
                 >
-                  {isVerifying ? (
+                  {isVerifyingEmail ? (
                     <ActivityIndicator size="small" color="#FFF" />
                   ) : (
                     <Text className="text-white font-medium">Submit</Text>
                   )}
                 </TouchableOpacity>
               </View>
-              {errors.verification && <Text className="text-red-500 text-sm mt-1">{errors.verification}</Text>}
+              {errors.emailVerification && <Text className="text-red-500 text-sm mt-1">{errors.emailVerification}</Text>}
             </View>
           )}
 
@@ -468,7 +593,7 @@ export default function Register({ navigation }) {
             <TouchableOpacity 
               className="w-3/4 mt-5 rounded-full overflow-hidden" 
               onPress={handleSubmit}
-              disabled={!isEmailVerified || loading}
+              disabled={!isEmailVerified || !isPhoneVerified || loading}
             >
               <LinearGradient
                 colors={["#FF6480", "#F22E63"]}
@@ -480,7 +605,7 @@ export default function Register({ navigation }) {
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
                   <Text className="text-white font-bold">
-                    {isEmailVerified ? "Create Account" : "Verify Email to Continue"}
+                    {isEmailVerified && isPhoneVerified ? "Create Account" : "Complete Verification"}
                   </Text>
                 )}
               </LinearGradient>

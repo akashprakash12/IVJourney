@@ -133,17 +133,34 @@ const UndertakingSchema = new mongoose.Schema({
   parentSignature: { type: String, required: true },  // Stores file path
   submittedAt: { type: Date, default: Date.now }
 });
-// Temporary verification codes (expire after 15 minutes)
 const tempVerificationSchema = new mongoose.Schema({
-  email: { 
-    type: String, 
-    required: true, 
-    unique: true,
+  email: {
+    type: String,
     trim: true,
     lowercase: true,
+    required: false, // Explicitly not required
+    index: {
+      unique: true,
+      sparse: true,
+      partialFilterExpression: { email: { $exists: true } }
+    },
     validate: {
-      validator: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+      validator: (email) => !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
       message: "Invalid email format"
+    }
+  },
+  phone: {
+    type: String,
+    trim: true,
+    required: false, // Explicitly not required
+    index: {
+      unique: true,
+      sparse: true,
+      partialFilterExpression: { phone: { $exists: true } }
+    },
+    validate: {
+      validator: (phone) => !phone || /^\d{10}$/.test(phone),
+      message: "Phone must be 10 digits"
     }
   },
   code: {
@@ -161,11 +178,13 @@ const tempVerificationSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Verified emails collection
+// Remove the compound index and replace with separate sparse indexes
+tempVerificationSchema.index({ email: 1 }, { unique: true, sparse: true, partialFilterExpression: { email: { $exists: true } } });
+tempVerificationSchema.index({ phone: 1 }, { unique: true, sparse: true, partialFilterExpression: { phone: { $exists: true } } });
 const verifiedEmailSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
+  email: { 
+    type: String, 
+    required: true, 
     unique: true,
     trim: true,
     lowercase: true
@@ -176,10 +195,18 @@ const verifiedEmailSchema = new mongoose.Schema({
   }
 });
 
-
-// Auto-delete expired records (TTL index)
-tempVerificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
+const verifiedPhoneSchema = new mongoose.Schema({
+  phone: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+  verifiedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
 
 
 
@@ -193,6 +220,7 @@ module.exports = {
   Profile: mongoose.model("Profile", ProfileSchema),
   TempVerification:mongoose.model('TempVerification', tempVerificationSchema),
   VerifiedEmail : mongoose.model('VerifiedEmail', verifiedEmailSchema),
+  VerifiedPhone: mongoose.model('VerifiedPhone', verifiedPhoneSchema)
 
 
 };
