@@ -26,7 +26,10 @@ const { sendWelcomeEmail } = require("../context/emailService");
 const dns = require('dns');
 const validator = require('validator');
 const { sendVerificationEmail } = require("../context/emailverifie");
-
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+const client = require('twilio')(accountSid, authToken); 
 
 const IP = process.env.IP;
 
@@ -479,114 +482,98 @@ router.post("/packages/vote", async (req, res) => {
 router.post("/register", async (req, res) => {
   try {
     const { fullName, userName, phone, email, password, role, gender } = req.body;
+    const normalizedPhone = phone.replace(/\D/g, '');
+    const normalizedEmail = email.toLowerCase();
 
-    // 1. Validate required fields
-    if (!fullName || !userName || !phone || !email || !password || !role || !gender) {
-      return res.status(400).json({ error: "All fields are required." });
+    // Validate required fields
+    const requiredFields = { fullName, userName, phone, email, password, role, gender };
+    for (const [field, value] of Object.entries(requiredFields)) {
+      if (!value) {
+        return res.status(400).json({ 
+          error: `${field} is required`,
+          field
+        });
+      }
     }
 
-    // 2. Validate gender
-    const validGenders = ["Male", "Female", "Other"];
-    if (!validGenders.includes(gender)) {
-      return res.status(400).json({ error: "Invalid gender value." });
-    }
-
-    // 3. Validate email format
-    if (!validator.isEmail(email)) {
+    // Validate email format
+    if (!validator.isEmail(normalizedEmail)) {
       return res.status(400).json({ 
-        error: "Please enter a valid email address", 
-        field: "email" 
+        error: "Invalid email format",
+        field: "email"
       });
     }
 
-    // 4. Validate email domain (only in production)
-    if (process.env.NODE_ENV === 'production') {
-      const domain = email.split('@')[1];
-      try {
-        await dns.promises.resolveMx(domain);
-      } catch (err) {
-        return res.status(400).json({ 
-          error: "We don't accept emails from this provider", 
-          field: "email" 
-        });
-      }
-    }
-
-    // 5. Check for existing user
+    // Check for existing user
     const existingUser = await Register.findOne({
-      $or: [{ userName }, { phone }, { email }],
+      $or: [
+        { userName },
+        { phone: normalizedPhone },
+        { email: normalizedEmail }
+      ]
     });
 
     if (existingUser) {
-      if (existingUser.userName === userName) {
-        return res.status(400).json({ 
-          error: "Username already exists", 
-          field: "userName" 
-        });
-      }
-      if (existingUser.phone === phone) {
-        return res.status(400).json({ 
-          error: "Phone number already in use", 
-          field: "phone" 
-        });
-      }
-      if (existingUser.email === email) {
-        return res.status(400).json({ 
-          error: "Email already registered", 
-          field: "email" 
-        });
-      }
+      const conflicts = [];
+      if (existingUser.userName === userName) conflicts.push("username");
+      if (existingUser.phone === normalizedPhone) conflicts.push("phone");
+      if (existingUser.email === normalizedEmail) conflicts.push("email");
+      
+      return res.status(400).json({ 
+        error: "User already exists",
+        conflicts
+      });
     }
 
-    // 6. Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Check verifications
+    const [emailVerified, phoneVerified] = await Promise.all([
+      VerifiedEmail.findOne({ email: normalizedEmail }),
+      VerifiedPhone.findOne({ phone: normalizedPhone })
+    ]);
 
-    // 7. Prepare user data
-    const userData = {
-      fullName,
-      userName,
-      phone,
-      email,
-      password: hashedPassword,
-      role,
-      gender,
-      emailVerified: false // Add email verification flag
-    };
-
-    // 8. Generate IDs based on role
-    if (role === "Student") {
-      userData.studentID = `STU-${Math.floor(10000 + Math.random() * 90000)}`;
-    } else if (role === "Industry Representative") {
-      userData.industryID = `IND-${Math.floor(10000 + Math.random() * 90000)}`;
+    if (!emailVerified) {
+      return res.status(400).json({ 
+        error: "Email not verified",
+        field: "email"
+      });
     }
 
-    const isVerified = await VerifiedEmail.exists({ email });
-    if (!isVerified) {
-      return res.status(400).json({ error: "Email not verified" });
-    }
-    const isPhoneVerified = await VerifiedPhone.exists({ phone });
-    if (!isPhoneVerified) {
+    if (!phoneVerified) {
       return res.status(400).json({ 
         error: "Phone number not verified",
         field: "phone"
       });
     }
 
-    // 9. Save user
-    const newUser = new Register(userData);
-    await newUser.save();
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 10. Send welcome email (don't await to avoid blocking)
+    // Create new user
+    const newUser = await Register.create({
+      fullName,
+      userName,
+      phone: normalizedPhone,
+      email: normalizedEmail,
+      password: hashedPassword,
+      role,
+      gender,
+      emailVerified: true,
+      phoneVerified: true
+    });
+
+    // Send welcome email
     sendWelcomeEmail(newUser.email, newUser.fullName, newUser.role)
       .catch(err => console.error('Email sending failed:', err));
-    // Cleanup verified email record (optional)
-    await VerifiedEmail.deleteOne({ email });
-    await VerifiedPhone.deleteOne({ phone });
 
-    // 11. Return success response
+    // Cleanup verification records
+    await Promise.all([
+      VerifiedEmail.deleteOne({ email: normalizedEmail }),
+      VerifiedPhone.deleteOne({ phone: normalizedPhone })
+    ]);
+
     res.status(201).json({ 
       success: true,
-      message: "Registration successful! Please check your email.",
+      message: "Registration successful",
       user: {
         id: newUser._id,
         email: newUser.email,
@@ -595,29 +582,19 @@ router.post("/register", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Registration Error:", error);
-
-    // Handle duplicate key errors
+    console.error("Registration error:", error);
+    
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
       return res.status(400).json({ 
-        error: `${field} already exists`, 
+        error: `${field} already exists`,
         field 
       });
     }
 
-    // Handle validation errors
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(val => val.message);
-      return res.status(400).json({ 
-        error: messages.join(', '),
-        fields: Object.keys(error.errors)
-      });
-    }
-
-    // Generic server error
     res.status(500).json({ 
-      error: "Registration failed. Please try again later." 
+      error: "Registration failed",
+      details: error.message 
     });
   }
 });
@@ -628,13 +605,28 @@ router.post('/send-email-verification', async (req, res) => {
 
     // Validate email format
     if (!validator.isEmail(email)) {
-      return res.status(400).json({ error: "Invalid email format" });
+      return res.status(400).json({ 
+        error: "Invalid email format",
+        field: "email"
+      });
     }
 
     // Check if email already registered
     const existingUser = await Register.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: "Email already registered" });
+      return res.status(400).json({ 
+        error: "Email already registered",
+        field: "email"
+      });
+    }
+
+    // Check if already verified (prevent duplicate verification)
+    const isAlreadyVerified = await VerifiedEmail.exists({ email });
+    if (isAlreadyVerified) {
+      return res.status(400).json({
+        error: "Email already verified",
+        field: "email"
+      });
     }
 
     // Generate 6-digit code
@@ -642,10 +634,20 @@ router.post('/send-email-verification', async (req, res) => {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     // Store in temporary collection
-    await TempVerification.findOneAndUpdate(
+    await TempVerification.updateOne(
       { email },
-      { code, expiresAt, attempts: 0, $unset: { phone: "" } },
-      { upsert: true, new: true }
+      { 
+        $set: {
+          email,
+          code,
+          expiresAt,
+          attempts: 0
+        },
+        $unset: {
+          phone: ""
+        }
+      },
+      { upsert: true }
     );
 
     console.log('Verification code generated:', code);
@@ -654,26 +656,213 @@ router.post('/send-email-verification', async (req, res) => {
     try {
       await sendVerificationEmail(email, code);
       console.log('Verification email sent successfully to:', email);
-      return res.json({ success: true, message: "Verification code sent" });
+      return res.json({ 
+        success: true, 
+        message: "Verification code sent" 
+      });
     } catch (emailError) {
       console.error('Email sending error:', emailError);
       // Clean up the verification record if email fails
       await TempVerification.deleteOne({ email });
-      return res.status(500).json({ error: "Failed to send verification email" });
+      return res.status(500).json({ 
+        error: "Failed to send verification email",
+        details: emailError.message
+      });
     }
 
   } catch (error) {
     console.error("Verification error:", error);
-    res.status(500).json({ error: "Failed to send verification code" });
+    
+    // Handle duplicate key errors specifically
+    if (error.code === 11000) {
+      return res.status(400).json({
+        error: "Verification already requested",
+        solution: "Wait 15 minutes or use the code already sent"
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Failed to process verification request",
+      details: error.message 
+    });
   }
 });
+
 router.post('/verify-email', async (req, res) => {
   try {
     const { email, code } = req.body;
 
+    // Basic validation
+    if (!email || !code) {
+      return res.status(400).json({ 
+        error: "Email and code are required",
+        fields: ["email", "code"]
+      });
+    }
+
     // Find the verification record
     const verification = await TempVerification.findOne({ email });
     
+    if (!verification) {
+      return res.status(400).json({ 
+        error: "No verification request found",
+        solution: "Request a new verification code"
+      });
+    }
+
+    // Check attempts
+    if (verification.attempts >= 3) {
+      return res.status(429).json({ 
+        error: "Too many attempts",
+        solution: "Please request a new code"
+      });
+    }
+
+    // Verify code
+    if (verification.code !== code) {
+      await TempVerification.updateOne(
+        { email },
+        { $inc: { attempts: 1 } }
+      );
+      const remainingAttempts = 3 - (verification.attempts + 1);
+      return res.status(400).json({ 
+        error: "Invalid verification code",
+        details: `${remainingAttempts} attempts remaining`
+      });
+    }
+
+    // Check expiry
+    if (verification.expiresAt < new Date()) {
+      return res.status(400).json({ 
+        error: "Verification code expired",
+        solution: "Request a new code"
+      });
+    }
+
+    // Mark as verified - using updateOne with upsert to prevent duplicates
+    await VerifiedEmail.updateOne(
+      { email },
+      { $set: { email, verifiedAt: new Date() } },
+      { upsert: true }
+    );
+
+    // Clean up temporary verification
+    await TempVerification.deleteOne({ email });
+
+    res.json({ 
+      success: true, 
+      message: "Email verified successfully",
+      email
+    });
+
+  } catch (error) {
+    console.error("Email verification error:", error);
+    
+    // Handle duplicate key errors specifically
+    if (error.code === 11000) {
+      return res.status(400).json({
+        error: "Email already verified",
+        solution: "You can proceed to login"
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Email verification failed",
+      details: error.message 
+    });
+  }
+});
+// Send phone verification code
+
+router.post('/send-phone-verification', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    const normalizedPhone = phone.replace(/\D/g, '');
+
+    // Validate phone number
+    if (!/^\d{10}$/.test(normalizedPhone)) {
+      return res.status(400).json({ 
+        error: "Invalid phone number",
+        details: "Must be 10 digits without country code"
+      });
+    }
+
+    // Check if phone already registered
+    const existingUser = await Register.findOne({ phone: normalizedPhone });
+    if (existingUser) {
+      return res.status(400).json({ 
+        error: "Phone number already registered",
+        field: "phone"
+      });
+    }
+
+    // Generate verification code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
+
+    // Store verification data
+    await TempVerification.updateOne(
+      { phone: normalizedPhone },
+      {
+        $set: {
+          phone: normalizedPhone,
+          code,
+          expiresAt,
+          attempts: 0
+        },
+        $unset: { email: "" }
+      },
+      { upsert: true }
+    );
+
+    // Send SMS in production
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        const message = await client.messages.create({
+          body: `Your verification code is: ${code}`,
+          from: twilioPhone,
+          to: `+91${normalizedPhone}`
+        });
+        console.log('SMS sent:', message.sid);
+      } catch (error) {
+        console.error('Twilio error:', error);
+        return res.status(500).json({ 
+          error: "Failed to send SMS",
+          details: error.message
+        });
+      }
+    } else {
+      console.log(`[DEV] Verification code for ${normalizedPhone}: ${code}`);
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Verification code sent"
+    });
+
+  } catch (error) {
+    console.error("Phone verification error:", error);
+    res.status(500).json({ 
+      error: "Failed to process verification request",
+      details: error.message 
+    });
+  }
+});
+
+// Verify phone code
+// Verify Phone Code
+router.post('/verify-phone', async (req, res) => {
+  try {
+    const { phone, code } = req.body;
+    const normalizedPhone = phone.replace(/\D/g, '');
+
+    // Validate input
+    if (!normalizedPhone || !code) {
+      return res.status(400).json({ error: "Phone and code are required" });
+    }
+
+    // Find verification record
+    const verification = await TempVerification.findOne({ phone: normalizedPhone });
     if (!verification) {
       return res.status(400).json({ error: "No verification request found" });
     }
@@ -686,7 +875,7 @@ router.post('/verify-email', async (req, res) => {
     // Verify code
     if (verification.code !== code) {
       await TempVerification.updateOne(
-        { email },
+        { phone: normalizedPhone },
         { $inc: { attempts: 1 } }
       );
       return res.status(400).json({ error: "Invalid verification code" });
@@ -698,109 +887,29 @@ router.post('/verify-email', async (req, res) => {
     }
 
     // Mark as verified
-    await VerifiedEmail.create({ email });
-    await TempVerification.deleteOne({ email });
-
-    res.json({ success: true, message: "Email verified successfully" });
-  } catch (error) {
-    console.error("Verification error:", error);
-    res.status(500).json({ error: "Verification failed" });
-  }
-});
-// Send phone verification code
-router.post('/send-phone-verification', async (req, res) => {
-  try {
-    const { phone } = req.body;
-
-    if (!/^\d{10}$/.test(phone)) {
-      return res.status(400).json({ error: "Invalid phone number" });
-    }
-
-    // Check if phone already registered
-    const existingUser = await Register.findOne({ phone });
-    if (existingUser) {
-      return res.status(400).json({ error: "Phone number already registered" });
-    }
-
-    // Generate 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
-
-    // Store in verification collection - only phone field
-    await TempVerification.findOneAndUpdate(
-      { phone },
-      { 
-        phone,
-        code, 
-        expiresAt, 
-        attempts: 0,
-        $unset: { email: "" } // Better way to remove the field
-      },
-      { upsert: true, new: true }
+    await VerifiedPhone.updateOne(
+      { phone: normalizedPhone },
+      { $set: { phone: normalizedPhone, verifiedAt: new Date() } },
+      { upsert: true }
     );
 
-    // In production, send SMS here (e.g., using Twilio)
-    console.log(`SMS verification code for ${phone}: ${code}`);
-
-    res.json({ success: true, message: "SMS verification code sent" });
-  } catch (error) {
-    console.error("Phone verification error:", error);
-    res.status(500).json({ error: "Failed to send SMS code" });
-  }
-});
-
-// Verify phone code
-router.post('/verify-phone', async (req, res) => {
-  try {
-    const { phone, code } = req.body;
-
-    // Basic validation
-    if (!phone || !code) {
-      return res.status(400).json({ error: "Phone and code are required" });
-    }
-
-    // Find the verification record
-    const verification = await TempVerification.findOne({ phone });
-    
-    if (!verification) {
-      return res.status(400).json({ error: "No verification request found for this phone" });
-    }
-
-    // Check attempts
-    if (verification.attempts >= 3) {
-      return res.status(429).json({ error: "Too many attempts. Please request a new code." });
-    }
-
-    // Verify code
-    if (verification.code !== code) {
-      await TempVerification.updateOne(
-        { phone },
-        { $inc: { attempts: 1 } }
-      );
-      const remainingAttempts = 3 - (verification.attempts + 1);
-      return res.status(400).json({ 
-        error: `Invalid verification code. ${remainingAttempts} attempts remaining.`
-      });
-    }
-
-    // Check expiry
-    if (verification.expiresAt < new Date()) {
-      return res.status(400).json({ error: "Verification code has expired" });
-    }
-
-    // Mark as verified by deleting the record
-    await TempVerification.deleteOne({ phone });
+    // Cleanup
+    await TempVerification.deleteOne({ phone: normalizedPhone });
 
     res.json({ 
       success: true, 
-      message: "Phone number verified successfully",
-      phone 
+      message: "Phone number verified successfully"
     });
+
   } catch (error) {
     console.error("Phone verification error:", error);
-    res.status(500).json({ error: "Phone verification failed" });
+    res.status(500).json({ 
+      error: "Phone verification failed",
+      details: error.message 
+    });
   }
 });
+
 
 // User Management
 router.get("/api/register", async (req, res) => {

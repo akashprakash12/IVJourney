@@ -1,5 +1,7 @@
 // models/Item.js
 const mongoose = require("mongoose");
+const validator = require('validator');
+const normalizePhone = phone => phone.replace(/\D/g, '');
 
 // Define the schema
 const ItemSchema = new mongoose.Schema({
@@ -78,33 +80,6 @@ const PackageSchema = new mongoose.Schema(
 );
 
 
-const RegisterSchema = new mongoose.Schema(
-  {
-    fullName: { type: String, required: true },
-    userName: { type: String, required: true, unique: true },
-    phone: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: {
-      type: String,
-      required: true,
-      enum: ["Student", "Student Leader", "HOD", "Industry Representative"],
-    },
-    gender: {
-      type: String,
-      required: true,
-      enum: ["Male", "Female", "Other"],
-    },
-    studentID: { type: String, unique: true, sparse: true },
-    industryID: { type: String, unique: true, sparse: true },
-    // Add this profile reference field
-    profile: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Profile"
-    }
-  },
-  { timestamps: true }
-);
 
 
 const ProfileSchema = new mongoose.Schema({
@@ -133,16 +108,17 @@ const UndertakingSchema = new mongoose.Schema({
   parentSignature: { type: String, required: true },  // Stores file path
   submittedAt: { type: Date, default: Date.now }
 });
+
 const tempVerificationSchema = new mongoose.Schema({
   email: {
     type: String,
     trim: true,
     lowercase: true,
-    required: false, // Explicitly not required
+    default: undefined, // Important for sparse indexes
     index: {
       unique: true,
       sparse: true,
-      partialFilterExpression: { email: { $exists: true } }
+      partialFilterExpression: { email: { $type: "string" } }
     },
     validate: {
       validator: (email) => !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
@@ -152,11 +128,12 @@ const tempVerificationSchema = new mongoose.Schema({
   phone: {
     type: String,
     trim: true,
-    required: false, // Explicitly not required
+    default: undefined, 
+    set: normalizePhone, // Important for sparse indexes
     index: {
       unique: true,
       sparse: true,
-      partialFilterExpression: { phone: { $exists: true } }
+      partialFilterExpression: { phone: { $type: "string" } }
     },
     validate: {
       validator: (phone) => !phone || /^\d{10}$/.test(phone),
@@ -178,9 +155,95 @@ const tempVerificationSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Remove the compound index and replace with separate sparse indexes
-tempVerificationSchema.index({ email: 1 }, { unique: true, sparse: true, partialFilterExpression: { email: { $exists: true } } });
-tempVerificationSchema.index({ phone: 1 }, { unique: true, sparse: true, partialFilterExpression: { phone: { $exists: true } } });
+const RegisterSchema = new mongoose.Schema({
+  fullName: { type: String, required: true },
+  userName: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    trim: true
+  },
+  phone: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    set: normalizePhone, 
+    validate: {
+      validator: v => /^\d{10}$/.test(v),
+      message: props => `${props.value} is not a valid phone number!`
+    }
+  },
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    validate: {
+      validator: validator.isEmail,
+      message: props => `${props.value} is not a valid email!`
+    }
+  },
+  password: { type: String, required: true },
+  role: {
+    type: String,
+    required: true,
+    enum: ["Student", "Student Leader", "HOD", "Industry Representative"],
+  },
+  gender: {
+    type: String,
+    required: true,
+    enum: ["Male", "Female", "Other"],
+  },
+  studentID: { 
+    type: String, 
+    unique: true, 
+    sparse: true
+  },
+  industryID: { 
+    type: String, 
+    unique: true, 
+    sparse: true
+  },
+  profile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Profile"
+  },
+  emailVerified: { type: Boolean, default: false },
+  phoneVerified: { type: Boolean, default: false }
+}, { timestamps: true });
+
+// Indexes
+RegisterSchema.index({ phone: 1 }, { unique: true });
+RegisterSchema.index({ email: 1 }, { unique: true });
+
+// Pre-save hooks
+RegisterSchema.pre('save', function(next) {
+  // Format phone number
+  if (this.phone) {
+    this.phone = this.phone.replace(/\D/g, '');
+  }
+  
+  // Generate IDs based on role
+  if (this.role === "Student" && !this.studentID) {
+    this.studentID = `STU-${Math.floor(10000 + Math.random() * 90000)}`;
+  } else if (this.role === "Industry Representative" && !this.industryID) {
+    this.industryID = `IND-${Math.floor(10000 + Math.random() * 90000)}`;
+  }
+  
+  next();
+});
+// Compound index for better query performance
+tempVerificationSchema.index(
+  { phone: 1, email: 1 },
+  { 
+    unique: true, 
+    partialFilterExpression: { 
+      $or: [
+        { phone: { $exists: true } }, 
+        { email: { $exists: true } }
+      ] 
+    } 
+  }
+);
 const verifiedEmailSchema = new mongoose.Schema({
   email: { 
     type: String, 
