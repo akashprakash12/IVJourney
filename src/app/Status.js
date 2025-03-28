@@ -89,14 +89,17 @@ export default function Status() {
 
   // Handle pie chart click
   const handlePieChartClick = () => {
-    // Transform the votedUsers data
-    const transformedVotedUsers = votedUsers.map((vote) => ({
-      name: vote.studentId.fullName,
-      gender: vote.studentId.gender,
-      studentID: vote.studentId.studentID,
-    }));
-
-    // Navigate to VotedPersonsScreen with the transformed data
+    // Filter out any votes that don't have studentId data
+    const transformedVotedUsers = votedUsers
+      .filter(vote => vote.studentId) // Only include votes with studentId
+      .map((vote) => ({
+        name: vote.studentId.fullName,
+        gender: vote.studentId.gender,
+        studentID: vote.studentId.studentID,
+      }));
+  
+    console.log(transformedVotedUsers);
+  
     navigation.navigate("VotedPersons", { votedUsers: transformedVotedUsers });
   };
 

@@ -1130,7 +1130,7 @@ router.get("/getProfile/:email", async (req, res) => {
 // Voting Analytics
 router.get("/votes-details", async (req, res) => {
   try {
-    const votes = await Vote.find()
+    const votes = await Vote.find({ studentId: { $ne: null } }) // Only find votes with non-null studentId
       .populate({
         path: "studentId",
         model: "Register",
@@ -1140,10 +1140,11 @@ router.get("/votes-details", async (req, res) => {
 
     let maleCount = 0;
     let femaleCount = 0;
+    const validVotes = votes.filter(vote => vote.studentId); // Filter out votes where populate failed
 
-    votes.forEach((vote) => {
-      if (vote.studentId?.gender === "Male") maleCount++;
-      if (vote.studentId?.gender === "Female") femaleCount++;
+    validVotes.forEach((vote) => {
+      if (vote.studentId.gender === "Male") maleCount++;
+      if (vote.studentId.gender === "Female") femaleCount++;
     });
 
     const total = maleCount + femaleCount;
@@ -1155,11 +1156,11 @@ router.get("/votes-details", async (req, res) => {
       femaleCount,
     };
 
-    const uniqueStudentIds = [...new Set(votes.map((vote) => vote.studentId?._id?.toString()))];
+    const uniqueStudentIds = [...new Set(validVotes.map(vote => vote.studentId._id.toString()))];
     const totalStudents = uniqueStudentIds.length;
 
     res.json({
-      votedUsers: votes,
+      votedUsers: validVotes, // Only send valid votes
       genderRatio,
       totalStudents,
     });
