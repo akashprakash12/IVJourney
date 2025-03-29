@@ -44,7 +44,7 @@ export default function Login({ navigation }) {
       
        login(role, token,userDetails);
   
-      navigation.navigate("Home"); // Navigate to Home after login
+       // Navigate to Home after login
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Login failed";
       Alert.alert("Login Failed", errorMessage);
