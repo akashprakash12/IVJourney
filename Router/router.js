@@ -1041,29 +1041,53 @@ router.delete("/request-status/:id", async (req, res) => {
 
 // Profile Management
 router.post("/updateProfile", upload.single("profileImage"), async (req, res) => {
-  const { name, studentID, industryID, branch, email, phone } = req.body;
+  const { name, studentID, industryID, branch, semester, email, phone } = req.body;
+
+  // Validate required fields
+  if (!name || !email || !phone) {
+    return res.status(400).json({ message: "Name, email, and phone are required" });
+  }
 
   try {
-    let profile = await Profile.findOne({ email });
-    let registerUser = await Register.findOne({ email });
+    // Find existing profile and register user
+    const [profile, registerUser] = await Promise.all([
+      Profile.findOne({ email }),
+      Register.findOne({ email })
+    ]);
 
+    // Handle file upload if exists
+    const profileImage = req.file 
+      ? `/uploads/${req.file.filename}`
+      : profile?.profileImage;
+
+    // Prepare update data
+    const updateData = {
+      name,
+      studentID: studentID || null,
+      industryID: industryID || null,
+      branch: branch || null,
+      semester: semester || null, // Handle semester field
+      phone,
+      profileImage
+    };
+
+    // Update or create profile
+    let updatedProfile;
     if (!profile) {
-      profile = new Profile({
-        name,
-        studentID: studentID || null,
-        industryID: industryID || null,
-        branch,
-        email,
-        phone,
-        profileImage: req.file ? `/uploads/${req.file.filename}` : null,
+      // Create new profile
+      updatedProfile = new Profile({
+        ...updateData,
+        email
       });
-      await profile.save();
+      await updatedProfile.save();
 
-      if (registerUser) {
-        registerUser.profile = profile._id;
+      // Link to register user if exists
+      if (registerUser && !registerUser.profile) {
+        registerUser.profile = updatedProfile._id;
         await registerUser.save();
       }
     } else {
+      // Delete old image if new one is uploaded
       if (req.file && profile.profileImage) {
         const oldImagePath = path.join(__dirname, "..", profile.profileImage);
         if (fs.existsSync(oldImagePath)) {
@@ -1071,38 +1095,57 @@ router.post("/updateProfile", upload.single("profileImage"), async (req, res) =>
         }
       }
 
-      profile.name = name;
-      if (studentID) profile.studentID = studentID;
-      if (industryID) profile.industryID = industryID;
-      profile.branch = branch;
-      profile.phone = phone;
-      if (req.file) {
-        profile.profileImage = `/uploads/${req.file.filename}`;
-      }
-      await profile.save();
+      // Update existing profile
+      updatedProfile = await Profile.findOneAndUpdate(
+        { email },
+        updateData,
+        { new: true }
+      );
 
+      // Link to register user if not already linked
       if (registerUser && !registerUser.profile) {
-        registerUser.profile = profile._id;
+        registerUser.profile = updatedProfile._id;
         await registerUser.save();
       }
     }
 
-    const updatedProfile = await Profile.findById(profile._id);
-    res.json({ 
-      message: "Profile updated successfully", 
+    // Prepare response
+    const responseData = {
+      message: "Profile updated successfully",
       user: {
-        ...updatedProfile.toObject(),
-        profileImage: req.file 
+        _id: updatedProfile._id,
+        name: updatedProfile.name,
+        email: updatedProfile.email,
+        studentID: updatedProfile.studentID,
+        industryID: updatedProfile.industryID,
+        branch: updatedProfile.branch,
+        semester: updatedProfile.semester, // Include semester in response
+        phone: updatedProfile.phone,
+        profileImage: updatedProfile.profileImage 
           ? `${IP}${updatedProfile.profileImage}`
-          : updatedProfile.profileImage
+          : null,
+        role: registerUser?.role // Include role if available
       }
-    });
+    };
+
+    res.json(responseData);
   } catch (error) {
     console.error("Error updating profile:", error);
-    res.status(500).json({ message: "Server error" });
+    
+    // Clean up uploaded file if error occurred
+    if (req.file) {
+      const filePath = path.join(__dirname, "../uploads", req.file.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    res.status(500).json({ 
+      message: "Error updating profile",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
-
 router.get("/getProfile/:email", async (req, res) => {
   try {
     const { email } = req.params;
@@ -1117,6 +1160,7 @@ router.get("/getProfile/:email", async (req, res) => {
       studentID: user.studentID,
       branch: user.branch,
       phone: user.phone,
+      semester:user.semester,
       profileImage: user.profileImage
         ? `http://${IP}:5000${user.profileImage}`
         : null,

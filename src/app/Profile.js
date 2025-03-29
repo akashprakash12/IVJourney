@@ -20,13 +20,11 @@ import FormData from 'form-data';
 export default function ProfileScreen({ navigation }) {
   const { userDetails, setUserDetails } = useContext(AuthContext); // Get user details and setter function
 
-  console.log("User Details from Context:", userDetails);
-
   // States for user data
   const [name, setName] = useState(userDetails?.fullName || "");
   const [studentID, setStudentID] = useState(userDetails?.studentID || "");
   const [industryID, setindustryID] = useState(userDetails?.industryID|| "");
-  
+  const [semester, setSemester] = useState(userDetails?.semester || "");
   
   const [branch, setBranch] = useState(userDetails?.branch || "");
   const [email, setEmail] = useState(userDetails?.email || ""); // Email should not be updated
@@ -46,6 +44,7 @@ export default function ProfileScreen({ navigation }) {
         setName(data.name || "");
         setStudentID(data.studentID || "");
         setBranch(data.branch || "");
+        setSemester(data.semester || "");
         setPhone(data.phone || "");
         setImage(data.profileImage || null);
       } catch (error) {
@@ -91,6 +90,7 @@ export default function ProfileScreen({ navigation }) {
       formData.append("branch", branch);
       formData.append("phone", phone);
       formData.append("email", email); // Email should not change
+      formData.append("semester", semester); // Add this line
 
       if (studentID || industryID) {
         formData.append("studentID", studentID);
@@ -144,88 +144,106 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <ScrollView className="flex-1 bg-white px-5 pt-10">
-      <Text className="text-2xl font-bold text-center text-pink-600">
-        Profile
-      </Text>
+    <Text className="text-2xl font-bold text-center text-pink-600">
+      Profile
+    </Text>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#E91E63" className="mt-10" />
-      ) : (
-        <>
-          {/* Profile Section */}
-          <View className="items-center mt-5">
-            <TouchableOpacity onPress={pickImage}>
-              <Image
-                source={{ uri: image || "https://via.placeholder.com/100" }}
-                className="w-24 h-24 rounded-full border-2 border-pink-500"
-              />
-              <View className="absolute bottom-0 right-0 bg-pink-500 p-2 rounded-full">
-                <FontAwesome5 name="sync-alt" size={14} color="white" />
-              </View>
-            </TouchableOpacity>
-            <Text className="text-lg font-semibold mt-2">{name}</Text>
-          </View>
-
-          {/* Form Fields */}
-          <View className="mt-5">
-            <Text className="text-gray-600 font-semibold">Full Name</Text>
-            <TextInput
-              className="border-b-2 border-pink-500 text-lg py-1"
-              value={name}
-              onChangeText={setName}
+    {loading ? (
+      <ActivityIndicator size="large" color="#E91E63" className="mt-10" />
+    ) : (
+      <>
+        {/* Profile Section */}
+        <View className="items-center mt-5">
+          <TouchableOpacity onPress={pickImage}>
+            <Image
+              source={{ uri: image || "https://via.placeholder.com/100" }}
+              className="w-24 h-24 rounded-full border-2 border-pink-500"
             />
-
-            {studentID ? (
-              <>
-                <Text className="text-gray-600 font-semibold mt-3">
-                  Student ID
-                </Text>
-                <TextInput
-                  className="border-b-2 border-pink-500 text-lg py-1"
-                  value={studentID}
-                  onChangeText={setStudentID}
-                />
-              </>
-            ) : null}
-            {branch ? (
-              <>
-                <Text className="text-gray-600 font-semibold mt-3">Branch</Text>
-                <TextInput
-                  className="border-b-2 border-pink-500 text-lg py-1"
-                  value={branch}
-                  onChangeText={setBranch}
-                />
-              </>
-            ) : null}
-
-            <Text className="text-gray-600 font-semibold mt-3">Email</Text>
-            <TextInput
-              className="border-b-2 border-gray-300 text-lg py-1 bg-gray-100 text-gray-500"
-              value={email}
-              onChangeText={setEmail}
-              editable={false} // Email should not be editable
-            />
-
-            <Text className="text-gray-600 font-semibold mt-3">
-              Phone Number
-            </Text>
-            <TextInput
-              className="border-b-2 border-pink-500 text-lg py-1"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            className="bg-pink-500 py-3 rounded-lg mt-5 items-center"
-            onPress={handleSubmit}
-          >
-            <Text className="text-white font-bold text-lg">Save Changes</Text>
+            <View className="absolute bottom-0 right-0 bg-pink-500 p-2 rounded-full">
+              <FontAwesome5 name="sync-alt" size={14} color="white" />
+            </View>
           </TouchableOpacity>
-        </>
-      )}
-    </ScrollView>
+          <Text className="text-lg font-semibold mt-2">{name}</Text>
+        </View>
+
+        {/* Form Fields */}
+        <View className="mt-5">
+          <Text className="text-gray-600 font-semibold">Full Name</Text>
+          <TextInput
+            className="border-b-2 border-pink-500 text-lg py-1"
+            value={name}
+            onChangeText={setName}
+          />
+
+          {/* Student ID - Only for Students */}
+          {userDetails?.role === "Student" && (
+            <>
+              <Text className="text-gray-600 font-semibold mt-3">Student ID</Text>
+              <TextInput
+                className="border-b-2 border-pink-500 text-lg py-1"
+                value={studentID}
+                onChangeText={setStudentID}
+              />
+            </>
+          )}
+
+          {/* Branch - Only for Students and Student Leaders */}
+          {(userDetails?.role === "Student" || userDetails?.role === "Student Leader") && (
+            <>
+              <Text className="text-gray-600 font-semibold mt-3">Branch</Text>
+              <TextInput
+                className="border-b-2 border-pink-500 text-lg py-1"
+                value={branch}
+                onChangeText={setBranch}
+              />
+                <Text className="text-gray-600 font-semibold mt-3">Semester</Text>
+          <TextInput
+            className="border-b-2 border-pink-500 text-lg py-1"
+            value={semester}
+            onChangeText={setSemester}
+            placeholder="Enter your semester (e.g., 3rd)"
+            keyboardType="numeric"
+          />
+                  </>
+          )}
+
+          {/* Industry ID - Only for Industry Representatives */}
+          {userDetails?.role === "Industry Representative" && (
+            <>
+              <Text className="text-gray-600 font-semibold mt-3">Industry ID</Text>
+              <TextInput
+                className="border-b-2 border-pink-500 text-lg py-1"
+                value={industryID}
+                onChangeText={setindustryID}
+              />
+            </>
+          )}
+
+          <Text className="text-gray-600 font-semibold mt-3">Email</Text>
+          <TextInput
+            className="border-b-2 border-gray-300 text-lg py-1 bg-gray-100 text-gray-500"
+            value={email}
+            editable={false}
+            onChangeText={setEmail}
+          />
+
+          <Text className="text-gray-600 font-semibold mt-3">Phone Number</Text>
+          <TextInput
+            className="border-b-2 border-pink-500 text-lg py-1"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <TouchableOpacity
+          className="bg-pink-500 py-3 rounded-lg mt-5 items-center"
+          onPress={handleSubmit}
+        >
+          <Text className="text-white font-bold text-lg">Save Changes</Text>
+        </TouchableOpacity>
+      </>
+    )}
+  </ScrollView>
   );
 }

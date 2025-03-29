@@ -89,6 +89,7 @@ const ProfileSchema = new mongoose.Schema({
   branch: { type: String, default: null },
   email: { type: String, required: true, unique: true },
   phone: { type: String, default: null },
+  semester: { type: String, default: null },
   profileImage: { type: String, default: null },
   role: { type: String, enum: ["student", "faculty", "admin"], default: "student" },
   createdAt: { type: Date, default: Date.now },

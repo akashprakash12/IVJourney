@@ -43,16 +43,28 @@ export default function RequestForm({ navigation }) {
   const [industries, setIndustries] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (userDetails) {
-      setStudentName(userDetails.fullName);
-      setDepartment(userDetails.department || "N/A");
-      setStudentRep(
-        userDetails.role === "Student Leader" ? userDetails.fullName : ""
-      );
-    }
+    const fetchProfile = async () => {
+      try {
+        if (userDetails?.email) {
+          const response = await axios.get(
+            `http://${IP}:5000/api/getProfile/${userDetails.email}`
+          );
+          // Set the department/branch from the profile
+          console.log(response.data);
+          setSemester(response.data.semester)
+          setStudentName(response.data.name)
+          setDepartment(response.data.branch || "N/A");
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        setDepartment("N/A");
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
 
-    fetchPackages();
-  }, [userDetails]); // Run when userDetails changes
+    fetchProfile();
+  }, [userDetails?.email]);
 
   const [checklist, setChecklist] = useState({
     minutesOfMeeting: false,
