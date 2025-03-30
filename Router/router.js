@@ -932,44 +932,147 @@ router.get("/api/register", async (req, res) => {
 });
 
 // Request Management
-router.post("/submit-request", async (req, res) => {
+// In your routes file
+router.get("/check-request/:id", async (req, res) => {
   try {
-    const requestData = req.body;
+    const { id } = req.params;
+    console.log("Checking request for Object ID:", id);
 
-    if (!mongoose.Types.ObjectId.isValid(requestData.Obj_id)) {
-      return res.status(400).json({ error: "Invalid user ID format" });
-    }
-    requestData.Obj_id = new mongoose.Types.ObjectId(requestData.Obj_id);
-
-    requestData.submissionDate = new Date(requestData.submissionDate).toISOString();
-    requestData.date = new Date(requestData.date).toISOString();
-
-    if (typeof requestData.distance === "string") {
-      requestData.distance = parseFloat(requestData.distance.replace(/\D/g, ""));
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        error: "Invalid Object ID format",
+        exists: false
+      });
     }
 
-    const normalizedData = {
-      studentName: requestData.studentName.trim().toLowerCase(),
-      industry: requestData.industry.trim().toLowerCase(),
-      date: new Date(requestData.date).toISOString(),
-      email: requestData.email.trim().toLowerCase(),
-    };
+    const existingRequest = await Request.findOne({
+      Obj_id: new mongoose.Types.ObjectId(id),  // Use the id from params directly
+      status: { $in: ["Pending", "Approved"] }  // Match your schema's enum case
+    });
 
-    const existingRequest = await Request.findOne(normalizedData);
-    if (existingRequest) {
-      return res.status(409).json({ error: "Duplicate request already exists!" });
-    }
-
-    const newRequest = new Request(requestData);
-    await newRequest.save();
-
-    res.status(201).json({ message: "Request submitted successfully!" });
+    console.log("Found Request:", existingRequest);
+    res.json({ 
+      exists: !!existingRequest,
+      request: existingRequest || null
+    });
   } catch (error) {
-    console.error("Error submitting request:", error);
-    res.status(500).json({ error: "Failed to submit request." });
+    console.error("Check request error:", error);
+    res.status(500).json({ 
+      error: "Server error while checking request",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      exists: false
+    });
   }
 });
 
+router.post("/submit-request", async (req, res) => {
+  try {
+    const requestData = req.body;
+    console.log("Received request data:", requestData);
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(requestData.Obj_id)) {
+      return res.status(400).json({
+        error: "Invalid student ID format"
+      });
+    }
+
+    // Convert to ObjectId first
+    requestData.Obj_id = new mongoose.Types.ObjectId(requestData.Obj_id);
+
+    const requiredFields = [
+      "Obj_id", "role", "email", "studentName", "department",
+      "semester", "industry", "date", "studentsCount",
+      "faculty", "transport", "packageDetails", "activity",
+      "duration", "distance", "ticketCost", "driverPhoneNumber",
+      "checklist"
+    ];
+
+    const missingFields = requiredFields.filter(field => {
+      // Check if field is missing or empty string
+      return requestData[field] === undefined || 
+             requestData[field] === null || 
+             (typeof requestData[field] === 'string' && requestData[field].trim() === '');
+    });
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: "Missing required fields",
+        missingFields
+      });
+    }
+
+    // Type conversions
+    requestData.studentsCount = parseInt(requestData.studentsCount);
+    if (isNaN(requestData.studentsCount) || requestData.studentsCount <= 0) {
+      return res.status(400).json({
+        error: "Number of students must be a positive integer"
+      });
+    }
+
+    requestData.distance = parseFloat(requestData.distance);
+    requestData.ticketCost = parseFloat(requestData.ticketCost);
+    requestData.date = new Date(requestData.date);
+    requestData.submissionDate = new Date(requestData.submissionDate || Date.now());
+
+    // Handle empty studentRep
+    if (!requestData.studentRep || requestData.studentRep.trim() === '') {
+      requestData.studentRep = "Not specified";
+    }
+
+    // Duplicate Check
+    const existingRequest = await Request.findOne({
+      Obj_id: requestData.Obj_id,
+      status: { $in: ["pending", "approved"] }
+    });
+
+    if (existingRequest) {
+      return res.status(409).json({
+        error: "You have already submitted a request that is pending or approved.",
+        existingId: existingRequest._id,
+        status: existingRequest.status
+      });
+    }
+
+    // Create new request
+    const newRequest = new Request({
+      ...requestData,
+      status: "Pending" // Note the capital 'P' to match your enum
+    });
+
+    await newRequest.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Request submitted successfully",
+      requestId: newRequest._id
+    });
+
+  } catch (error) {
+    console.error("Request submission error:", error);
+    
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        error: "Validation failed",
+        details: errors
+      });
+    }
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        error: "Invalid data format",
+        details: error.message
+      });
+    }
+
+    return res.status(500).json({
+      error: "Internal server error",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
+  }
+});
 router.get("/requests/students", async (req, res) => {
   try {
     const studentRequests = await Request.find().populate("Obj_id", "email fullName");

@@ -69,7 +69,7 @@
     "react-native-html-to-pdf": "^0.12.0",
     "react-native-make": "^1.0.1",
     "react-native-maps": "1.18.0",
-    "react-native-pager-view": "6.5.1",
+    "react-native-pager-view": "^6.7.0",
     "react-native-paper": "^5.13.1",
     "react-native-pdf": "^6.7.7",
     "react-native-picker-select": "^9.3.1",

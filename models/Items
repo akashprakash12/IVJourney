@@ -31,22 +31,35 @@ const RequestSchema = new mongoose.Schema({
   email: { type: String, required: true },
   studentName: { type: String, required: true },
   department: { type: String, required: true },
-  studentRep: { type: String, required: true },
-  submissionDate: { type: Date, required: true }, // Date type
+  studentRep: { type: String, default: "Not specified" }, // Made optional with default
+  submissionDate: { type: Date, required: true },
   industry: { type: String, required: true },
-  date: { type: Date, required: true }, // Date type
+  date: { type: Date, required: true },
   studentsCount: { type: Number, required: true },
   faculty: { type: String, required: true },
   transport: { type: String, required: true },
   packageDetails: { type: String, required: true },
   activity: { type: String, required: true },
   duration: { type: String, required: true },
-  distance: { type: Number, required: true }, // Number type
+  distance: { type: Number, required: true },
   ticketCost: { type: Number, required: true },
-  driverPhoneNumber: { type: String, required: true },
+  driverPhoneNumber: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v) {
+        return /^\d{10}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid phone number!`
+    }
+  },
   checklist: { type: Object, required: true },
-  status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" }
-});
+  status: { 
+    type: String, 
+    enum: ["Pending", "Approved", "Rejected"], 
+    default: "Pending" 
+  }
+}, { timestamps: true });
 
 const PackageSchema = new mongoose.Schema(
   {
