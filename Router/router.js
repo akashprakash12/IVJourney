@@ -30,7 +30,7 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
 const client = require('twilio')(accountSid, authToken); 
-
+const uploadSignatures2 = require('../context/UploadSignature');
 const IP = process.env.IP;
 
 
@@ -1318,112 +1318,223 @@ router.get("/votes-details", async (req, res) => {
 });
 
 // Undertaking Form Submission with Multer
-router.post('/undertaking', 
-  uploadSignatures.fields([
-    { name: 'studentSignature', maxCount: 1 },
-    { name: 'parentSignature', maxCount: 1 }
-  ]),
-  async (req, res) => {
-    try {
-      const {
-        studentName,
-        semester,
-        branch,
-        rollNo,
-        parentName,
-        placesVisited,
-        tourPeriod,
-        facultyDetails
-      } = req.body;
 
-      const requiredFields = {
-        studentName,
-        semester,
-        branch,
-        rollNo,
-        parentName,
-        placesVisited,
-        tourPeriod,
-        facultyDetails
-      };
 
-      for (const [field, value] of Object.entries(requiredFields)) {
-        if (!value) {
-          if (req.files) {
-            Object.values(req.files).forEach(files => {
-              files.forEach(file => {
-                fs.unlinkSync(file.path);
-              });
-            });
-          }
-          return res.status(400).json({ 
-            error: `${field} is required`,
-            field
-          });
-        }
-      }
-
-      const existing = await Undertaking.findOne({ rollNo });
-      if (existing) {
-        if (req.files) {
-          Object.values(req.files).forEach(files => {
-            files.forEach(file => {
-              fs.unlinkSync(file.path);
-            });
-          });
-        }
-        return res.status(400).json({ 
-          error: 'An undertaking already exists for this roll number',
-          rollNo
-        });
-      }
-
-      const studentSigPath = req.files.studentSignature 
-        ? `/uploads/student-signatures/${req.files.studentSignature[0].filename}`
-        : null;
-      
-      const parentSigPath = req.files.parentSignature 
-        ? `/uploads/parent-signatures/${req.files.parentSignature[0].filename}`
-        : null;
-
-      const undertaking = new Undertaking({
-        studentName,
-        semester,
-        branch,
-        rollNo,
-        parentName,
-        placesVisited,
-        tourPeriod,
-        facultyDetails,
-        studentSignature: studentSigPath,
-        parentSignature: parentSigPath
-      });
-
-      await undertaking.save();
-
-      res.status(201).json({
-        success: true,
-        message: 'Undertaking submitted successfully',
-        data: undertaking
-      });
-
-    } catch (error) {
-      console.error('Error submitting undertaking:', error);
-      
-      if (req.files) {
-        Object.values(req.files).forEach(files => {
-          files.forEach(file => {
-            fs.unlinkSync(file.path);
-          });
-        });
-      }
-
-      res.status(500).json({ 
-        error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+// Submit new undertaking
+router.post('/undertaking', uploadSignatures2, async (req, res) => {
+  try {
+    // Validate required fields
+    console.log('Body:', req.body);
+  console.log('Files:', req.files);
+    const requiredFields = [
+      'studentName', 'semester', 'branch', 'rollNo','studentID',
+      'parentName', 'placesVisited', 'tourPeriod', 'facultyDetails'
+    ];
+    
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    if (missingFields.length > 0) {
+      await cleanupFiles(req.files);
+      return res.status(400).json({
+        error: 'Missing required fields',
+        missingFields
       });
     }
-  }
-);
 
+    // Check for existing undertaking - modified to be more specific
+    const existing = await Undertaking.findOne({ 
+      Obj_id: req.body.obj_id,
+      studentID: req.body.studentID,
+    });
+    
+    if (existing) {
+      await cleanupFiles(req.files);
+      return res.status(409).json({ // 409 Conflict is more appropriate
+        error: 'Only one undertaking per semester allowed',
+        details: {
+          existingSubmission: {
+            date: existing.createdAt,
+            semester: existing.semester
+          }
+        }
+      });
+    }
+
+    // Rest of your submission logic...
+       // Create and save the undertaking
+       const undertaking = new Undertaking({
+        Obj_id: req.body.obj_id, // Ensure obj_id is stored
+        studentName: req.body.studentName,
+        semester: req.body.semester,
+        branch: req.body.branch,
+        rollNo: req.body.rollNo,
+        studentID:req.body.studentID,
+        parentName: req.body.parentName,
+        placesVisited: req.body.placesVisited,
+        tourPeriod: req.body.tourPeriod,
+        facultyDetails: req.body.facultyDetails,
+        studentSignature: req.files.studentSignature?.[0]?.filename 
+          ? `/uploads/student-signatures/${req.files.studentSignature[0].filename}`
+          : null,
+        parentSignature: req.files.parentSignature?.[0]?.filename
+          ? `/uploads/parent-signatures/${req.files.parentSignature[0].filename}`
+          : null
+      });
+  
+
+    await undertaking.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Undertaking submitted successfully',
+      data: undertaking
+    });
+
+  } catch (error) {
+    console.error('Error submitting undertaking:', error);
+    await cleanupFiles(req.files);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+router.get('/undertaking/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('Fetching undertaking with identifier:', id);
+
+    // Create a query that checks both _id and Obj_id
+    const query = {
+      $or: [
+        { _id: id },
+        { Obj_id: id }
+      ]
+    };
+    
+    const undertaking = await Undertaking.findOne(query);
+    if (!undertaking) {
+      return res.status(404).json({
+        error: 'Undertaking not found'
+      });
+    }
+    res.json({
+      success: true,
+      data: undertaking
+    });
+  } catch (error) {
+    console.error('Error fetching undertaking:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+router.put('/undertaking/:id', uploadSignatures2, async (req, res) => {
+  try {
+    const undertaking = await Undertaking.findById(req.params.id);
+    if (!undertaking) {
+      await cleanupFiles(req.files);
+      return res.status(404).json({
+        error: 'Undertaking not found'
+      });
+    }
+
+    // Update fields
+    const updatableFields = [
+      'studentName', 'semester', 'branch', 'rollNo',
+      'parentName', 'placesVisited', 'tourPeriod', 'facultyDetails'
+    ];
+    
+    updatableFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        undertaking[field] = req.body[field];
+      }
+    });
+
+    // Update signatures if new ones are provided
+    if (req.files?.studentSignature?.[0]?.filename) {
+      // Delete old signature file if exists
+      if (undertaking.studentSignature) {
+        await deleteFile(undertaking.studentSignature);
+      }
+      undertaking.studentSignature = `/uploads/student-signatures/${req.files.studentSignature[0].filename}`;
+    }
+
+    if (req.files?.parentSignature?.[0]?.filename) {
+      // Delete old signature file if exists
+      if (undertaking.parentSignature) {
+        await deleteFile(undertaking.parentSignature);
+      }
+      undertaking.parentSignature = `/uploads/parent-signatures/${req.files.parentSignature[0].filename}`;
+    }
+
+    await undertaking.save();
+
+    res.json({
+      success: true,
+      message: 'Undertaking updated successfully',
+      data: undertaking
+    });
+
+  } catch (error) {
+    console.error('Error updating undertaking:', error);
+    await cleanupFiles(req.files);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+router.delete('/undertaking/:id', async (req, res) => {
+  try {
+    const undertaking = await Undertaking.findByIdAndDelete(req.params.id);
+    if (!undertaking) {
+      return res.status(404).json({
+        error: 'Undertaking not found'
+      });
+    }
+
+    // Delete associated signature files
+    if (undertaking.studentSignature) {
+      await deleteFile(undertaking.studentSignature);
+    }
+    if (undertaking.parentSignature) {
+      await deleteFile(undertaking.parentSignature);
+    }
+
+    res.json({
+      success: true,
+      message: 'Undertaking deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting undertaking:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+// Updated cleanupFiles function using fs.promises
+async function cleanupFiles(files) {
+  if (!files) return;
+  
+  const fs = require('fs').promises; // Import promises API
+  
+  try {
+    const deletions = [];
+    Object.values(files).forEach(fileArray => {
+      fileArray.forEach(file => {
+        if (file.path) {
+          deletions.push(
+            fs.unlink(file.path).catch(err => console.error('Error deleting file:', err))
+          );
+        }
+      });
+    });
+    
+    await Promise.all(deletions);
+  } catch (error) {
+    console.error('Error in cleanupFiles:', error);
+  }
+}
 module.exports = router;

@@ -110,10 +110,12 @@ const ProfileSchema = new mongoose.Schema({
 
 
 const UndertakingSchema = new mongoose.Schema({
+  Obj_id: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Register" },
   studentName: { type: String, required: true },
   semester: { type: String, required: true },
   branch: { type: String, required: true },
   rollNo: { type: String, required: true, unique: true },
+  studentID: { type: String, required: true },
   parentName: { type: String, required: true },
   placesVisited: { type: String, required: true },
   tourPeriod: { type: String, required: true },

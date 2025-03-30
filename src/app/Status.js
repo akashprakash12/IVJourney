@@ -15,7 +15,9 @@ import { useNavigation } from "@react-navigation/native";
 
 export default function Status() {
   const { userDetails } = useContext(AuthContext);
-  const [studentID, setStudentID] = useState(userDetails?.studentID || "");
+  console.log(userDetails);
+  
+
   const [votedUsers, setVotedUsers] = useState([]);
   const [genderRatio, setGenderRatio] = useState({ maleCount: 0, femaleCount: 0 });
   const [status, setStatus] = useState("Pending");
@@ -125,13 +127,21 @@ export default function Status() {
 
         
 
-        {/* Status Section */}
-        <View style={styles.statusContainer}>
-          <Text style={styles.statusTitle}>Request Status</Text>
-          <View style={[styles.statusBox, { backgroundColor: statusColor[status] }]}>
-            <Text style={styles.statusText}>{status}</Text>
-          </View>
-        </View>
+      {/* Status Section - Show only if user is a Student */}
+      {userDetails?.role === "Student" && (
+  <TouchableOpacity
+    onPress={() => navigation.navigate("StudnetStatus", { id: userDetails._id })}
+  >
+    <View style={styles.statusContainer}>
+      <Text style={styles.statusTitle}>View Status</Text>
+      <View style={[styles.statusBox, { backgroundColor: statusColor[status] }]}>
+        <Text style={styles.statusText}>{status}</Text>
+      </View>
+    </View>
+  </TouchableOpacity>
+)}
+
+
       </View>
     </ScrollView>
   );

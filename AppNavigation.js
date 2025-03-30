@@ -31,6 +31,7 @@ import RequestForm from "./src/Admin/RequestForm";
 import PDFPreview from "./src/HOD/RequestApprove";
 import StudentRequist from "./src/Student/StudentRequist";
 import VotedPersonsScreen from "./src/Student/VotedPersonsScreen";
+import Studentstatus from "./src/Student/Studentstatus";
 
 
 // Icons
@@ -211,9 +212,15 @@ function MainNavigator() {
         component={RequestForm} 
         options={{ headerShown: true }}
       />
+      
       <MainStack.Screen 
         name="Approveform" 
         component={PDFPreview} 
+        options={{ headerShown: true }}
+      />
+      <MainStack.Screen 
+        name="StudnetStatus" 
+        component={Studentstatus} 
         options={{ headerShown: true }}
       />
     </MainStack.Navigator>
