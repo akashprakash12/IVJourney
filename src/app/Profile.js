@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  SafeAreaView,
 } from "react-native";
 import { FontAwesome5 } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -143,7 +144,8 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white px-5 pt-10">
+    <SafeAreaView className="flex-1 bg-white">
+    <ScrollView className="flex-1 bg-white px-5 pt-10"  keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 100 }}>
     <Text className="text-2xl font-bold text-center text-pink-600">
       Profile
     </Text>
@@ -245,5 +247,6 @@ export default function ProfileScreen({ navigation }) {
       </>
     )}
   </ScrollView>
+  </SafeAreaView>
   );
 }
