@@ -30,69 +30,71 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
 const client = require('twilio')(accountSid, authToken); 
-const uploadSignatures2 = require('../context/UploadSignature');
+const {  uploadSignatures, 
+  uploadStudentRequests,
+  uploadGeneral } = require('../context/UploadSignature');
 const IP = process.env.IP;
 
 
 
-// Configure upload directories
-const uploadDir = path.join(__dirname, "../uploads");
-const studentSigDir = path.join(uploadDir, "student-signatures");
-const parentSigDir = path.join(uploadDir, "parent-signatures");
+// // Configure upload directories
+// const uploadDir = path.join(__dirname, "../uploads");
+// const studentSigDir = path.join(uploadDir, "student-signatures");
+// const parentSigDir = path.join(uploadDir, "parent-signatures");
 
-// Create directories if they don't exist
-[uploadDir, studentSigDir, parentSigDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
+// // Create directories if they don't exist
+// [uploadDir, studentSigDir, parentSigDir].forEach(dir => {
+//   if (!fs.existsSync(dir)) {
+//     fs.mkdirSync(dir, { recursive: true });
+//   }
+// });
 
-// Configure Multer storage for general uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  }
-});
+// // Configure Multer storage for general uploads
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, uploadDir);
+//   },
+//   filename: (req, file, cb) => {
+//     const ext = path.extname(file.originalname);
+//     cb(null, `${uuidv4()}${ext}`);
+//   }
+// });
 
-// Configure Multer storage for signatures
-const signatureStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let folder = '';
-    if (file.fieldname === 'studentSignature') {
-      folder = 'student-signatures';
-    } else if (file.fieldname === 'parentSignature') {
-      folder = 'parent-signatures';
-    }
-    cb(null, path.join(uploadDir, folder));
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  }
-});
+// // Configure Multer storage for signatures
+// const signatureStorage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     let folder = '';
+//     if (file.fieldname === 'studentSignature') {
+//       folder = 'student-signatures';
+//     } else if (file.fieldname === 'parentSignature') {
+//       folder = 'parent-signatures';
+//     }
+//     cb(null, path.join(uploadDir, folder));
+//   },
+//   filename: (req, file, cb) => {
+//     const ext = path.extname(file.originalname);
+//     cb(null, `${uuidv4()}${ext}`);
+//   }
+// });
 
-// File filter for images only
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed!'), false);
-  }
-};
+// // File filter for images only
+// const fileFilter = (req, file, cb) => {
+//   if (file.mimetype.startsWith('image/')) {
+//     cb(null, true);
+//   } else {
+//     cb(new Error('Only image files are allowed!'), false);
+//   }
+// };
 
 // Initialize Multer instances
-const upload = multer({ storage });
-const uploadSignatures = multer({ 
-  storage: signatureStorage,
-  fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
-});
+// const upload = multer({ storage });
+// const uploadSignatures = multer({ 
+//   storage: signatureStorage,
+//   fileFilter,
+//   limits: {
+//     fileSize: 5 * 1024 * 1024 // 5MB limit
+//   }
+// });
 
 // Helper functions
 function calculateAverageRating(reviews) {
@@ -126,8 +128,9 @@ router.get("/", (req, res) => {
   res.send("Welcome to the IVJourney API!");
 });
 
+
 // PDF Upload
-router.post("/upload-pdf", upload.single("file"), (req, res) => {
+router.post("/upload-pdf",  uploadStudentRequests.single("file"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
@@ -178,7 +181,7 @@ router.post("/Login", async (req, res) => {
 });
 
 // Package Management
-router.post("/packages", upload.single("image"), async (req, res) => {
+router.post("/packages",  uploadGeneral.single("image"), async (req, res) => {
   try {
     const price = Number(req.body.price);
     const activities = req.body.activities ? JSON.parse(req.body.activities) : [];
@@ -238,7 +241,7 @@ router.get("/packages", async (_req, res) => {
     }
 
     const formattedPackages = packages.map((pkg) => {
-      const imageUrl = pkg.image ? `http://${IP}:5000/uploads/${pkg.image}` : null;
+      const imageUrl = pkg.image ? `http://${IP}:5000/uploads/general/${pkg.image}` : null;
       return {
         label: pkg.packageName,
         value: pkg._id,
@@ -1143,7 +1146,7 @@ router.delete("/request-status/:id", async (req, res) => {
 });
 
 // Profile Management
-router.post("/updateProfile", upload.single("profileImage"), async (req, res) => {
+router.post("/updateProfile",  uploadGeneral.single("profileImage"), async (req, res) => {
   const { name, studentID, industryID, branch, semester, email, phone } = req.body;
 
   // Validate required fields
@@ -1321,7 +1324,7 @@ router.get("/votes-details", async (req, res) => {
 
 
 // Submit new undertaking
-router.post('/undertaking', uploadSignatures2, async (req, res) => {
+router.post('/undertaking', uploadSignatures, async (req, res) => {
   try {
     // Validate required fields
     console.log('Body:', req.body);
@@ -1429,9 +1432,16 @@ router.get('/undertaking/:id', async (req, res) => {
     });
   }
 });
-router.put('/undertaking/:id', uploadSignatures2, async (req, res) => {
+router.put('/undertaking/:id', uploadSignatures, async (req, res) => {
   try {
-    const undertaking = await Undertaking.findById(req.params.id);
+    const { id } = req.params;
+    const query = {
+      $or: [
+        { _id: id },
+        { Obj_id: id }
+      ]
+    };
+    const undertaking = await Undertaking.findOne(query);
     if (!undertaking) {
       await cleanupFiles(req.files);
       return res.status(404).json({
@@ -1441,7 +1451,7 @@ router.put('/undertaking/:id', uploadSignatures2, async (req, res) => {
 
     // Update fields
     const updatableFields = [
-      'studentName', 'semester', 'branch', 'rollNo',
+      'studentName', 'semester', 'branch', 'rollNo','studentID',
       'parentName', 'placesVisited', 'tourPeriod', 'facultyDetails'
     ];
     
@@ -1485,27 +1495,87 @@ router.put('/undertaking/:id', uploadSignatures2, async (req, res) => {
     });
   }
 });
+
+
+
 router.delete('/undertaking/:id', async (req, res) => {
   try {
-    const undertaking = await Undertaking.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    
+    // Find the undertaking document
+    const undertaking = await Undertaking.findOneAndDelete({
+      $or: [
+        { _id: id },
+        { Obj_id: id }
+      ]
+    });
+
     if (!undertaking) {
       return res.status(404).json({
         error: 'Undertaking not found'
       });
     }
 
-    // Delete associated signature files
+    // Prepare files for deletion
+    const filesToDelete = [];
+    
     if (undertaking.studentSignature) {
-      await deleteFile(undertaking.studentSignature);
+      const filename = undertaking.studentSignature.split('/').pop();
+      filesToDelete.push({
+        path: path.join(__dirname, '../uploads/student-signatures', filename),
+        url: undertaking.studentSignature
+      });
     }
+    
     if (undertaking.parentSignature) {
-      await deleteFile(undertaking.parentSignature);
+      const filename = undertaking.parentSignature.split('/').pop();
+      filesToDelete.push({
+        path: path.join(__dirname, '../uploads/parent-signatures', filename),
+        url: undertaking.parentSignature
+      });
+    }
+
+    // Convert fs.unlink to promise for easier use with async/await
+    const unlinkFile = (filePath) => {
+      return new Promise((resolve, reject) => {
+        fs.unlink(filePath, (err) => {
+          if (err) {
+            if (err.code === 'ENOENT') {
+              console.log(`File not found (already deleted?): ${filePath}`);
+              resolve({ success: true, warning: 'File not found' });
+            } else {
+              console.error(`Error deleting file ${filePath}:`, err);
+              reject(err);
+            }
+          } else {
+            console.log(`Successfully deleted file: ${filePath}`);
+            resolve({ success: true });
+          }
+        });
+      });
+    };
+
+    // Delete files
+    const deletionResults = await Promise.allSettled(
+      filesToDelete.map(file => unlinkFile(file.path))
+    );
+
+    // Check for failures
+    const failedDeletions = deletionResults.filter(r => r.status === 'rejected');
+    if (failedDeletions.length > 0) {
+      console.error('Some files failed to delete:', failedDeletions);
     }
 
     res.json({
       success: true,
-      message: 'Undertaking deleted successfully'
+      message: 'Undertaking deleted' + (failedDeletions.length ? ' (some files may remain)' : ''),
+      deletedFiles: filesToDelete.map(f => f.url),
+      warnings: deletionResults
+        .filter(r => r.status === 'fulfilled' && r.value.warning)
+        .map(r => r.value.warning),
+      errors: failedDeletions.map(f => f.reason.message)
     });
+
   } catch (error) {
     console.error('Error deleting undertaking:', error);
     res.status(500).json({

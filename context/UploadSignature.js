@@ -1,49 +1,89 @@
-// utils/fileUpload.js
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 
-// Ensure upload directories exist
-const uploadDirs = [
-  path.join(__dirname, '../uploads/student-signatures'),
-  path.join(__dirname, '../uploads/parent-signatures')
-];
+// Define all upload directories
+const uploadDirs = {
+  signatures: {
+    student: path.join(__dirname, '../uploads/student-signatures'),
+    parent: path.join(__dirname, '../uploads/parent-signatures')
+  },
+  studentRequests: path.join(__dirname, '../uploads/student-requests'),
+  general: path.join(__dirname, '../uploads/general')
+};
 
-uploadDirs.forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+// Create directories if they don't exist
+Object.values(uploadDirs).forEach(dir => {
+  if (typeof dir === 'object') {
+    Object.values(dir).forEach(subDir => {
+      if (!fs.existsSync(subDir)) fs.mkdirSync(subDir, { recursive: true });
+    });
+  } else {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   }
 });
 
-// Configure storage
-const storage = multer.diskStorage({
+// Configure storage for signatures
+const signatureStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    let uploadPath = '';
+    let uploadPath = uploadDirs.general; // default
+    
     if (file.fieldname === 'studentSignature') {
-      uploadPath = uploadDirs[0];
+      uploadPath = uploadDirs.signatures.student;
     } else if (file.fieldname === 'parentSignature') {
-      uploadPath = uploadDirs[1];
+      uploadPath = uploadDirs.signatures.parent;
     }
+    
     cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    const ext = path.extname(file.originalname);
+    cb(null, `${uuidv4()}${ext}`);
   }
 });
 
-// File filter to only accept images
+// Configure storage for student requests
+const studentRequestStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDirs.studentRequests);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    cb(null, `${uuidv4()}${ext}`);
+  }
+});
+
+const generalStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDirs.general);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    cb(null, `${uuidv4()}${ext}`);
+  }
+});
+
+// File filter to only accept certain file types
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
+  const allowedTypes = [
+    'image/jpeg', 
+    'image/png',
+    'application/pdf',
+    'application/msword', // .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' // .docx
+  ];
+  
+  if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed!'), false);
+    cb(new Error('Invalid file type. Only images, PDFs and Word docs are allowed!'), false);
   }
 };
 
-// Configure multer upload
-const uploadSignatures = multer({
-  storage: storage,
+// Configure different multer upload instances
+exports.uploadSignatures = multer({
+  storage: signatureStorage,
   fileFilter: fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit per file
@@ -53,4 +93,17 @@ const uploadSignatures = multer({
   { name: 'parentSignature', maxCount: 1 }
 ]);
 
-module.exports = uploadSignatures;
+exports.uploadStudentRequests = multer({
+  storage: studentRequestStorage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit for student requests
+  }
+});
+exports.uploadGeneral = multer({
+  storage: generalStorage,  // Use the storage configuration instead of dest
+  fileFilter: fileFilter,   // Add the same file filter
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  }
+});
