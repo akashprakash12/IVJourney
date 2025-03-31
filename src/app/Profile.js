@@ -41,6 +41,7 @@ export default function ProfileScreen({ navigation }) {
           `http://${IP}:5000/api/getProfile/${email}`
         );
         const data = response.data;
+console.log(data);
 
         setName(data.name || "");
         setStudentID(data.studentID || "");

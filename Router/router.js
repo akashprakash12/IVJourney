@@ -1146,11 +1146,16 @@ router.delete("/request-status/:id", async (req, res) => {
 });
 
 // Profile Management
-router.post("/updateProfile",  uploadGeneral.single("profileImage"), async (req, res) => {
+router.post("/updateProfile", uploadGeneral.single("profileImage"), async (req, res) => {
   const { name, studentID, industryID, branch, semester, email, phone } = req.body;
 
   // Validate required fields
   if (!name || !email || !phone) {
+    // Clean up uploaded file if validation fails
+    if (req.file) {
+      const filePath = path.join(uploadDirs.general, req.file.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
     return res.status(400).json({ message: "Name, email, and phone are required" });
   }
 
@@ -1162,9 +1167,15 @@ router.post("/updateProfile",  uploadGeneral.single("profileImage"), async (req,
     ]);
 
     // Handle file upload if exists
+    let oldImagePath = null;
     const profileImage = req.file 
-      ? `/uploads/${req.file.filename}`
+      ? `/uploads/general/${req.file.filename}`
       : profile?.profileImage;
+
+    // If new file uploaded and profile exists with old image, mark old image for deletion
+    if (req.file && profile?.profileImage) {
+      oldImagePath = path.join(__dirname, "..", profile.profileImage);
+    }
 
     // Prepare update data
     const updateData = {
@@ -1172,7 +1183,7 @@ router.post("/updateProfile",  uploadGeneral.single("profileImage"), async (req,
       studentID: studentID || null,
       industryID: industryID || null,
       branch: branch || null,
-      semester: semester || null, // Handle semester field
+      semester: semester || null,
       phone,
       profileImage
     };
@@ -1193,14 +1204,6 @@ router.post("/updateProfile",  uploadGeneral.single("profileImage"), async (req,
         await registerUser.save();
       }
     } else {
-      // Delete old image if new one is uploaded
-      if (req.file && profile.profileImage) {
-        const oldImagePath = path.join(__dirname, "..", profile.profileImage);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-        }
-      }
-
       // Update existing profile
       updatedProfile = await Profile.findOneAndUpdate(
         { email },
@@ -1212,6 +1215,33 @@ router.post("/updateProfile",  uploadGeneral.single("profileImage"), async (req,
       if (registerUser && !registerUser.profile) {
         registerUser.profile = updatedProfile._id;
         await registerUser.save();
+      }
+
+      // Update profile image in all package reviews by this user
+      if (req.file || profileImage !== profile.profileImage) {
+        await Package.updateMany(
+          { "reviews.userId": registerUser?._id },
+          { 
+            $set: { 
+              "reviews.$[elem].user.profileImage": profileImage,
+              "reviews.$[elem].user.fullName": name
+            } 
+          },
+          { 
+            arrayFilters: [{ "elem.userId": registerUser?._id }],
+            multi: true 
+          }
+        );
+      }
+    }
+
+    // Delete old image after successful update (if it exists)
+    if (oldImagePath && fs.existsSync(oldImagePath)) {
+      try {
+        fs.unlinkSync(oldImagePath);
+      } catch (err) {
+        console.error("Error deleting old profile image:", err);
+        // Don't fail the request if deletion fails, just log it
       }
     }
 
@@ -1225,12 +1255,12 @@ router.post("/updateProfile",  uploadGeneral.single("profileImage"), async (req,
         studentID: updatedProfile.studentID,
         industryID: updatedProfile.industryID,
         branch: updatedProfile.branch,
-        semester: updatedProfile.semester, // Include semester in response
+        semester: updatedProfile.semester,
         phone: updatedProfile.phone,
         profileImage: updatedProfile.profileImage 
           ? `${IP}${updatedProfile.profileImage}`
           : null,
-        role: registerUser?.role // Include role if available
+        role: registerUser?.role
       }
     };
 
@@ -1240,9 +1270,13 @@ router.post("/updateProfile",  uploadGeneral.single("profileImage"), async (req,
     
     // Clean up uploaded file if error occurred
     if (req.file) {
-      const filePath = path.join(__dirname, "../uploads", req.file.filename);
+      const filePath = path.join(uploadDirs.general, req.file.filename);
       if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+        try {
+          fs.unlinkSync(filePath);
+        } catch (err) {
+          console.error("Error cleaning up uploaded file after error:", err);
+        }
       }
     }
 
