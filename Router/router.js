@@ -21,32 +21,34 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const IP = process.env.IP;
+const crypto = require('crypto');
+const { sendWelcomeEmail, sendPasswordResetEmail} = require('../context/emailService');
+const { uploadStudentRequests, uploadGeneral} = require('../context/UploadSignature');
+// const uploadDir = path.join(__dirname, "../uploads");
+// if (!fs.existsSync(uploadDir)) {
+//   fs.mkdirSync(uploadDir, { recursive: true });
+// }
 
-const uploadDir = path.join(__dirname, "../uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// // Configure multer storage
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, uploadDir);
+//   },
+//   filename: (req, file, cb) => {
+//     const filePath = path.join(uploadDir, file.originalname);
 
-// Configure multer storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const filePath = path.join(uploadDir, file.originalname);
+//     // ✅ Check if the file already exists
+//     if (fs.existsSync(filePath)) {
+//       console.log("File already exists, reusing:", file.originalname);
+//       cb(null, file.originalname); // Use the existing filename
+//     } else {
+//       console.log("Saving new file:", file.originalname);
+//       cb(null, file.originalname); // Save with original filename (no timestamp)
+//     }
+//   },
+// });
 
-    // ✅ Check if the file already exists
-    if (fs.existsSync(filePath)) {
-      console.log("File already exists, reusing:", file.originalname);
-      cb(null, file.originalname); // Use the existing filename
-    } else {
-      console.log("Saving new file:", file.originalname);
-      cb(null, file.originalname); // Save with original filename (no timestamp)
-    }
-  },
-});
-
-const upload = multer({ storage });
+// const upload = multer({ storage });
 
 router.get("/", (req, res) => {
   res.send("Welcome to the IVJourney API!");
@@ -264,69 +266,57 @@ router.post("/packages/:packageId/feedback", async (req, res) => {
   }
 });
 
-      code: "SERVER_ERROR"
-    };
-
-    // Include stack trace in development
-    if (process.env.NODE_ENV === 'development') {
-      errorResponse.stack = error.stack;
-      errorResponse.message = error.message;
-    }
-
-    return res.status(500).json(errorResponse);
-  }
-});
+   
 //forgot-password
-router.post('/forgot-password', async (req, res) => {
-// Top of file with other imports
-const crypto = reqzuire('crypto');
+// router.post('/forgot-password', async (req, res) => {
+// // Top of file with other imports
 
-// Add this route with other auth routes (after /Login)
-router.post('/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
+// // Add this route with other auth routes (after /Login)
+// router.post('/forgot-password', async (req, res) => {
+//   try {
+//     const { email } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
-    }
+//     if (!email) {
+//       return res.status(400).json({ error: "Email is required" });
+//     }
 
-    const user = await Register.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: "User with this email does not exist" });
-    }
+//     const user = await Register.findOne({ email });
+//     if (!user) {
+//       return res.status(404).json({ error: "User with this email does not exist" });
+//     }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(20).toString('hex');
+//     // Generate reset token
+//     const resetToken = crypto.randomBytes(20).toString('hex');
     
-    // Set token and expiration (1 hour)
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000;
-    await user.save();
+//     // Set token and expiration (1 hour)
+//     user.resetPasswordToken = resetToken;
+//     user.resetPasswordExpires = Date.now() + 3600000;
+//     await user.save();
 
-    // Create reset URL
-    const resetUrl = `http://${IP}:3000/reset-password/${resetToken}`;
+//     // Create reset URL
+//     const resetUrl = `http://${IP}:3000/reset-password/${resetToken}`;
 
-    // Send email
-    await sendEmail({
-      to: user.email,
-      subject: 'Password Reset Request - IVJourney',
-      text: `You requested a password reset. Click this link to continue: ${resetUrl}\n\nIf you didn't make this request, please ignore this email.`
-    });
+//     // Send email
+//     await sendEmail({
+//       to: user.email,
+//       subject: 'Password Reset Request - IVJourney',
+//       text: `You requested a password reset. Click this link to continue: ${resetUrl}\n\nIf you didn't make this request, please ignore this email.`
+//     });
 
-    res.status(200).json({ 
-      success: true,
-      message: "Password reset instructions sent to your email"
-    });
+//     res.status(200).json({ 
+//       success: true,
+//       message: "Password reset instructions sent to your email"
+//     });
 
-  } catch (error) {
-    console.error("Forgot Password Error:", error);
-    res.status(500).json({
-      error: "Internal server error",
-      code: "PASSWORD_RESET_ERROR"
-    });
-  }
-});
-});
+//   } catch (error) {
+//     console.error("Forgot Password Error:", error);
+//     res.status(500).json({
+//       error: "Internal server error",
+//       code: "PASSWORD_RESET_ERROR"
+//     });
+//   }
+// });
+// });
 // Helper functions
 function calculateAverageRating(reviews) {
   return reviews.length 
@@ -1334,7 +1324,105 @@ router.get("/votes-details", async (req, res) => {
 });
 
 // Backend API Endpoint (Express.js example)
+// Forgot Password Route
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Find user by email
+    const user = await Register.findOne({ email });
+    if (!user) {
+      return res.status(200).json({ 
+        success: true,
+        message: "If this email exists, a reset link will be sent" 
+      });
+    }
 
+    // Generate and save reset token
+    const token = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
 
+    // Send email
+    const resetLink = `ivjourney://reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    await sendPasswordResetEmail(email, user.name, resetLink);
+
+    res.json({ 
+      success: true,
+      message: "Password reset link sent to your email",
+      token
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Internal server error" 
+    });
+  }
+});
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, email, newPassword } = req.body;
+    
+    if (!token || !email || !newPassword) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Token, email and new password are required" 
+      });
+    }
+
+    // Basic password validation
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long"
+      });
+    }
+
+    // Find user with valid token
+    const user = await Register.findOne({ 
+      email: email.toLowerCase(),
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid or expired password reset token" 
+      });
+    }
+
+    // Check if new password is different from old one
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current password"
+      });
+    }
+
+    // Update password and clear reset token
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    // Optionally: Send confirmation email
+    // sendPasswordChangedEmail(user.email, user.fullName);
+
+    return res.json({ 
+      success: true,
+      message: "Password updated successfully" 
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res.status(500).json({ 
+      success: false,
+      message: "Internal server error" 
+    });
+  }
+});
 // Export the router
 module.exports = router;
