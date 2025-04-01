@@ -360,6 +360,57 @@ router.post("/packages/:packageId/feedback", async (req, res) => {
     return res.status(500).json(errorResponse);
   }
 });
+//forgot-password
+router.post('/forgot-password', async (req, res) => {
+// Top of file with other imports
+const crypto = reqzuire('crypto');
+
+// Add this route with other auth routes (after /Login)
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = await Register.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: "User with this email does not exist" });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    
+    // Set token and expiration (1 hour)
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 3600000;
+    await user.save();
+
+    // Create reset URL
+    const resetUrl = `http://${IP}:3000/reset-password/${resetToken}`;
+
+    // Send email
+    await sendEmail({
+      to: user.email,
+      subject: 'Password Reset Request - IVJourney',
+      text: `You requested a password reset. Click this link to continue: ${resetUrl}\n\nIf you didn't make this request, please ignore this email.`
+    });
+
+    res.status(200).json({ 
+      success: true,
+      message: "Password reset instructions sent to your email"
+    });
+
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      code: "PASSWORD_RESET_ERROR"
+    });
+  }
+});
+});
 // Helper functions
 function calculateAverageRating(reviews) {
   return reviews.length 

@@ -14,6 +14,7 @@ import { AuthContext } from "./context/Authcontext"; // Ensure correct import
 import { Menu, Divider } from "react-native-paper";
 // Import Screens
 import Login from "./src/Login";
+import ForgotPassword from "./src/ForgotPassword";
 import Register from "./src/Register";
 import Bookmark from "./src/app/Bookmark";
 import Profile from "./src/app/Profile";
@@ -103,6 +104,17 @@ export default function AppNavigation() {
           name="Login"
           component={Login}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ForgotPassword"
+          component={ForgotPassword}
+          options={{ 
+            title: 'Reset Password',
+            headerStyle: {
+              backgroundColor: isDarkMode ? '#1C1C1E' : '#FFFFFF',
+            },
+            headerTintColor: isDarkMode ? '#FFFFFF' : '#000000',
+          }}
         />
         <Stack.Screen name="VotedPersons" component={VotedPersonsScreen} />
         <Stack.Screen name="PackageDetails" component={Package} />
