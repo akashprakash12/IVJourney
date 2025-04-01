@@ -19,11 +19,32 @@ export default function ForgotPassword({ navigation }) {
 
     try {
       setLoading(true);
-      await axios.post(`http://${IP}:5000/api/forgot-password`, { email });
-      Alert.alert("Success", "Password reset link sent to your email");
-      navigation.goBack();
+      const response = await axios.post(
+        `http://${IP}:5000/api/forgot-password`,
+        { email },
+        {
+          headers: { "Content-Type": "application/json" },
+          timeout: 10000
+        }
+      );
+
+      if (response.data.success) {
+        Alert.alert("Success", response.data.message);
+        navigation.navigate("ResetPassword", {
+          token: response.data.token,
+          email
+        });
+      } else {
+        Alert.alert("Notice", response.data.message);
+      }
     } catch (error) {
-      Alert.alert("Error", error.response?.data?.message || "Failed to send reset link");
+      let errorMessage = "Failed to send reset link";
+      if (error.response) {
+        errorMessage = error.response.data?.message || error.message;
+      } else if (error.request) {
+        errorMessage = "No response from server. Check your connection.";
+      }
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -41,6 +62,7 @@ export default function ForgotPassword({ navigation }) {
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
+        autoCapitalize="none"
         className={`border-b-2 p-2 text-lg mb-6 ${
           isDarkMode ? "text-white border-pink-500" : "text-black border-gray-600"
         }`}

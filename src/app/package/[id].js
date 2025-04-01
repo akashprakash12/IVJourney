@@ -56,35 +56,32 @@ const ReviewItem = ({ review, onEditPress, onDeletePress }) => {
   const textColor = isDarkMode ? "text-white" : "text-gray-800";
   const secondaryTextColor = isDarkMode ? "text-gray-400" : "text-gray-600";
   
-  // Check if this is the current user's review
   const isCurrentUserReview = userDetails?._id === review.userId;
-
-  // Default avatar if no profile image
   const defaultAvatar = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
 
-  // Construct the proper image URL
-  const getProfileImageUrl = () => {
-    if (!review.user?.profileImage) return defaultAvatar;
-    
-    if (review.user.profileImage.startsWith('http')) {
-      return review.user.profileImage;
+  const [profileImage, setProfileImage] = useState(defaultAvatar);
+
+  useEffect(() => {
+    if (review.user?.profileImage) {
+      if (review.user.profileImage.startsWith("http")) {
+        console.log(review.user.profileImage);
+        
+        setProfileImage(review.user.profileImage);
+      } else {
+        const cleanPath = review.user.profileImage.replace(/^\/+/, "");
+        setProfileImage(`http://${IP}:5000/${cleanPath}`);
+      }
     }
-    
-    const cleanPath = review.user.profileImage.replace(/^\/+/, '');
-    return `http://${IP}:5000/${cleanPath}`;
-  };
+  }, [review.user?.profileImage]);
 
   return (
     <View className="mb-4">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center">
           <Image
-            source={{ uri: getProfileImageUrl() }}
+            source={{ uri: profileImage }}
             className="w-10 h-10 rounded-full"
-            onError={(e) => {
-              console.log("Failed to load profile image:", e.nativeEvent.error);
-              e.target.source = { uri: defaultAvatar };
-            }}
+            onError={() => setProfileImage(defaultAvatar)}
           />
           <Text className={`ml-3 font-medium ${textColor}`}>
             {review.fullName || "Anonymous User"}
@@ -118,7 +115,6 @@ const ReviewItem = ({ review, onEditPress, onDeletePress }) => {
     </View>
   );
 };
-
 // Main PackageDetails Component
 export default function PackageDetails() {
   const navigation = useNavigation();
@@ -161,9 +157,10 @@ export default function PackageDetails() {
   // Fetch reviews from the backend
   const fetchReviews = useCallback(async () => {
     try {
-      console.log("Fetching reviews for package ID:", id);
+      
       const response = await axios.get(`http://${IP}:5000/api/packages/${id}`);
-      console.log(response.data);
+      console.log(response.data.reviews);
+      
       
       setReviews(response.data.reviews || []);
     } catch (error) {
@@ -209,8 +206,7 @@ export default function PackageDetails() {
         payload
       );
 
-      console.log("Feedback submitted successfully:", response.data);
-
+    
       // Reset fields and close modal
       setUserRating(0);
       setUserComment("");
@@ -330,13 +326,7 @@ export default function PackageDetails() {
       >
         {/* Header */}
         <View className={`py-6 px-4 flex-row items-center ${bgColor}`}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons 
-              name="arrow-back" 
-              size={24} 
-              color={isDarkMode ? "white" : "black"} 
-            />
-          </TouchableOpacity>
+         
           <Text className={`text-2xl font-bold flex-1 text-center ${textColor}`}>
             {name}
           </Text>

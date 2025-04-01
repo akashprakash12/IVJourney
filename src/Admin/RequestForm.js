@@ -43,16 +43,28 @@ export default function RequestForm({ navigation }) {
   const [industries, setIndustries] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (userDetails) {
-      setStudentName(userDetails.fullName);
-      setDepartment(userDetails.department || "N/A");
-      setStudentRep(
-        userDetails.role === "Student Leader" ? userDetails.fullName : ""
-      );
-    }
+    const fetchProfile = async () => {
+      try {
+        if (userDetails?.email) {
+          const response = await axios.get(
+            `http://${IP}:5000/api/getProfile/${userDetails.email}`
+          );
+          // Set the department/branch from the profile
+          console.log(response.data);
+          setSemester(response.data.semester)
+          setStudentName(response.data.name)
+          setDepartment(response.data.branch || "N/A");
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        setDepartment("N/A");
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
 
-    fetchPackages();
-  }, [userDetails]); // Run when userDetails changes
+    fetchProfile();
+    fetchPackages()  }, [userDetails?.email]);
 
   const [checklist, setChecklist] = useState({
     minutesOfMeeting: false,
@@ -77,68 +89,177 @@ export default function RequestForm({ navigation }) {
 
   // // Handle Form Submission
   const handleSubmit = async () => {
-    if (
-      !industry ||
-      !date ||
-      !studentsCount ||
-      !faculty ||
-      !transport ||
-      !packageDetails ||
-      !activity ||
-      !duration ||
-      !distance ||
-      !ticketCost ||
-      !driverPhoneNumber
-    ) {
-      Alert.alert("Error", "All fields are required!");
-      return;
-    }
-  
     try {
-      // Normalize data before sending
-      const normalizedData = {
+      console.log(userDetails);
+      
+      const checkResponse = await axios.get(
+        `http://${IP}:5000/api/check-request/${userDetails._id}`
+      );
+      
+      console.log("Check response:", checkResponse.data);
+      if (checkResponse.data.exists) {
+        Alert.alert(
+          "Request Exists",
+          "You have already submitted a request. Only one request is allowed per student.",
+        
+        );
+        return;
+      }
+      // Validate all required fields
+      const requiredFields = [
+        { name: 'industry', value: industry, label: 'Industry/Package selection' },
+        { name: 'date', value: date, label: 'Visit date' },
+        { name: 'studentsCount', value: studentsCount, label: 'Number of students' },
+        { name: 'faculty', value: faculty, label: 'Accompanying faculty' },
+        { name: 'transport', value: transport, label: 'Transport mode' },
+        { name: 'packageDetails', value: packageDetails, label: 'Package details' },
+        { name: 'activity', value: activity, label: 'Activity plan' },
+        { name: 'duration', value: duration, label: 'Duration' },
+        { name: 'distance', value: distance, label: 'Distance' },
+        { name: 'ticketCost', value: ticketCost, label: 'Ticket cost' },
+        { name: 'driverPhoneNumber', value: driverPhoneNumber, label: 'Driver phone number' }
+      ];
+  
+      // Check for missing or empty fields
+      const missingFields = requiredFields
+        .filter(field => {
+          // Trim string values before checking if empty
+          const value = typeof field.value === 'string' ? field.value.trim() : field.value;
+          return value === undefined || value === null || value === '';
+        })
+        .map(field => field.label);
+  
+      if (missingFields.length > 0) {
+        Alert.alert(
+          "Missing Information",
+          `Please fill in: ${missingFields.join(", ")}`
+        );
+        return;
+      }
+  
+      // Additional validations
+      const validationErrors = [];
+      
+      if (isNaN(parseInt(studentsCount)) || parseInt(studentsCount) <= 0) {
+        validationErrors.push("Please enter a valid number of students (must be positive)");
+      }
+  
+      if (isNaN(parseFloat(distance))) {
+        validationErrors.push("Please enter a valid distance");
+      }
+  
+      if (isNaN(parseFloat(ticketCost))) {
+        validationErrors.push("Please enter a valid ticket cost");
+      }
+  
+      if (!/^\d{10}$/.test(driverPhoneNumber)) {
+        validationErrors.push("Please enter a valid 10-digit phone number");
+      }
+  
+      // Validate date is not in the past
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedDate = new Date(date);
+      if (selectedDate < today) {
+        validationErrors.push("Visit date cannot be in the past");
+      }
+  
+      if (validationErrors.length > 0) {
+        Alert.alert(
+          "Validation Error",
+          validationErrors.join("\n\n")
+        );
+        return;
+      }
+  
+      // Prepare data with proper types and trimmed strings
+      const requestData = {
         Obj_id: userDetails._id,
         role: userDetails.role,
-        email: userDetails.email.trim().toLowerCase(), // Normalize email
-        studentName: studentName.trim().toLowerCase(), // Normalize studentName
-        department,
-        studentRep: studentRep.trim().toLowerCase(), // Normalize studentRep
-        submissionDate: new Date().toISOString(), // Ensure submissionDate is in UTC
-        industry: industry.trim().toLowerCase(), // Normalize industry
-        date: new Date(date).toISOString(), // Ensure date is in UTC
-        studentsCount,
-        faculty,
-        transport,
-        packageDetails,
-        activity,
-        duration,
+        email: userDetails.email.trim().toLowerCase(),
+        studentName: studentName.trim(),
+        department: department,
+        semester: semester,
+        studentRep: studentRep ? studentRep.trim() : "Not specified",
+        submissionDate: new Date().toISOString(),
+        industry: industry.trim(),
+        date: new Date(date).toISOString(),
+        studentsCount: parseInt(studentsCount),
+        faculty: faculty,
+        transport: transport,
+        packageDetails: packageDetails,
+        activity: activity,
+        duration: duration,
         distance: parseFloat(distance),
-        ticketCost,
-        driverPhoneNumber,
-        checklist, // Include checklist data
+        ticketCost: parseFloat(ticketCost),
+        driverPhoneNumber: driverPhoneNumber,
+        checklist: checklist
       };
   
-      console.log("Submitting Request Data:", normalizedData); // Log the data being sent
+    
+      // Add timeout to the request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+  console.log(requestData);
   
-      const response = await axios.post(`http://${IP}:5000/api/submit-request`, normalizedData);
+      const response = await axios.post(
+        `http://${IP}:5000/api/submit-request`,
+        requestData,
+        { signal: controller.signal }
+      );
   
-      Alert.alert("Success", "Your request has been submitted!");
+      clearTimeout(timeoutId);
+  
+      if (response.data && response.data.success) {
+        Alert.alert("Success", "Request submitted successfully!");
+        // Consider resetting form or navigating away here
+      } else {
+        throw new Error("Unexpected response from server");
+      }
+      
     } catch (error) {
-      console.error("Error submitting request:", error);
-  
-      if (error.response) {
-        if (error.response.status === 409) {
-          Alert.alert("Duplicate Request", "You have already submitted a request for this industry on the same date.");
-        } else {
-          Alert.alert("Error", error.response.data.error || "Failed to submit request.");
+      console.error("Submission error:", error);
+      
+      let errorMessage = "Failed to submit request. Please try again later.";
+      
+      if (error.name === 'AbortError') {
+        errorMessage = "Request timed out. Please check your connection and try again.";
+      } else if (error.response) {
+        switch (error.response.status) {
+          case 400:
+            errorMessage = "Invalid data submitted. Please check your inputs.";
+            break;
+          case 401:
+            errorMessage = "Authentication failed. Please login again.";
+            break;
+          case 403:
+            errorMessage = "You don't have permission to perform this action.";
+            break;
+          case 409:
+            errorMessage = "You've already submitted a similar request.";
+            break;
+          case 500:
+            errorMessage = "Server error. Please try again later.";
+            break;
+          default:
+            errorMessage = error.response.data?.error || errorMessage;
         }
       } else if (error.request) {
-        Alert.alert("Error", "No response received from the server. Check your network connection.");
-      } else {
-        Alert.alert("Error", "Unexpected error occurred.");
+        errorMessage = "No response from server. Please check your connection.";
       }
+  
+      Alert.alert(
+        "Error",
+        errorMessage,
+        error.response?.status === 401 ? 
+          [{ text: "OK", onPress: () => navigation.navigate('Login') }]
+          : undefined
+      );
+    } finally {
+      // Any cleanup code can go here
     }
   };
+
   const fetchPackages = async () => {
     try {
       const response = await axios.get(`http://${IP}:5000/api/packages`);
@@ -217,6 +338,7 @@ export default function RequestForm({ navigation }) {
         <TextInput
           value={department}
           editable={false}
+          onChangeText={setStudentName}
           className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-gray-600"
         />
 

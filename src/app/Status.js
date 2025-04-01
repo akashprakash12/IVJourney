@@ -15,20 +15,13 @@ import { useNavigation } from "@react-navigation/native";
 
 export default function Status() {
   const { userDetails } = useContext(AuthContext);
-  const [studentID, setStudentID] = useState(userDetails?.studentID || "");
+  console.log(userDetails);
+  
+
   const [votedUsers, setVotedUsers] = useState([]);
   const [genderRatio, setGenderRatio] = useState({ maleCount: 0, femaleCount: 0 });
   const [status, setStatus] = useState("Pending");
-  const [lineGraphData, setLineGraphData] = useState({
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    datasets: [
-      {
-        data: [0, 0, 0, 0, 0, 0], // Placeholder data
-        color: (opacity = 1) => `rgba(134, 65, 244, ${opacity})`, // Purple line
-        strokeWidth: 2,
-      },
-    ],
-  });
+
 
   const navigation = useNavigation(); // Initialize navigation
 
@@ -40,17 +33,7 @@ export default function Status() {
         setVotedUsers(response.data.votedUsers);
         setGenderRatio(response.data.genderRatio);
 
-        // Update line graph data (example: voting trends over months)
-        setLineGraphData({
-          labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-          datasets: [
-            {
-              data: [20, 45, 28, 80, 99, 43], // Replace with actual data from the backend
-              color: (opacity = 1) => `rgba(134, 65, 244, ${opacity})`, // Purple line
-              strokeWidth: 2,
-            },
-          ],
-        });
+    
       } catch (error) {
         console.error("Error fetching votes:", error);
       }
@@ -89,14 +72,17 @@ export default function Status() {
 
   // Handle pie chart click
   const handlePieChartClick = () => {
-    // Transform the votedUsers data
-    const transformedVotedUsers = votedUsers.map((vote) => ({
-      name: vote.studentId.fullName,
-      gender: vote.studentId.gender,
-      studentID: vote.studentId.studentID,
-    }));
-
-    // Navigate to VotedPersonsScreen with the transformed data
+    // Filter out any votes that don't have studentId data
+    const transformedVotedUsers = votedUsers
+      .filter(vote => vote.studentId) // Only include votes with studentId
+      .map((vote) => ({
+        name: vote.studentId.fullName,
+        gender: vote.studentId.gender,
+        studentID: vote.studentId.studentID,
+      }));
+  
+    console.log(transformedVotedUsers);
+  
     navigation.navigate("VotedPersons", { votedUsers: transformedVotedUsers });
   };
 
@@ -139,44 +125,23 @@ export default function Status() {
           </View>
         </View>
 
-        {/* Line Graph */}
-        <View style={styles.chartContainer}>
-          <Text style={styles.graphTitle}>Voting Trends Over Time</Text>
-          <LineChart
-            data={lineGraphData}
-            width={Dimensions.get("window").width - 30}
-            height={220}
-            chartConfig={{
-              backgroundColor: "#F5F5F5",
-              backgroundGradientFrom: "#F5F5F5",
-              backgroundGradientTo: "#F5F5F5",
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              style: {
-                borderRadius: 16,
-              },
-              propsForDots: {
-                r: "6",
-                strokeWidth: "1",
-                stroke: "#ffa726",
-              },
-            }}
-            bezier
-            style={{
-              marginVertical: 8,
-              borderRadius: 16,
-            }}
-          />
-        </View>
+        
 
-        {/* Status Section */}
-        <View style={styles.statusContainer}>
-          <Text style={styles.statusTitle}>Request Status</Text>
-          <View style={[styles.statusBox, { backgroundColor: statusColor[status] }]}>
-            <Text style={styles.statusText}>{status}</Text>
-          </View>
-        </View>
+      {/* Status Section - Show only if user is a Student */}
+      {userDetails?.role === "Student" && (
+  <TouchableOpacity
+    onPress={() => navigation.navigate("StudnetStatus", { id: userDetails._id })}
+  >
+    <View style={styles.statusContainer}>
+      <Text style={styles.statusTitle}>View Status</Text>
+      <View style={[styles.statusBox, { backgroundColor: statusColor[status] }]}>
+        <Text style={styles.statusText}>{status}</Text>
+      </View>
+    </View>
+  </TouchableOpacity>
+)}
+
+
       </View>
     </ScrollView>
   );

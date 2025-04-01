@@ -1,5 +1,7 @@
 // models/Item.js
 const mongoose = require("mongoose");
+const validator = require('validator');
+const normalizePhone = phone => phone.replace(/\D/g, '');
 
 // Define the schema
 const ItemSchema = new mongoose.Schema({
@@ -29,22 +31,35 @@ const RequestSchema = new mongoose.Schema({
   email: { type: String, required: true },
   studentName: { type: String, required: true },
   department: { type: String, required: true },
-  studentRep: { type: String, required: true },
-  submissionDate: { type: Date, required: true }, // Date type
+  studentRep: { type: String, default: "Not specified" }, // Made optional with default
+  submissionDate: { type: Date, required: true },
   industry: { type: String, required: true },
-  date: { type: Date, required: true }, // Date type
+  date: { type: Date, required: true },
   studentsCount: { type: Number, required: true },
   faculty: { type: String, required: true },
   transport: { type: String, required: true },
   packageDetails: { type: String, required: true },
   activity: { type: String, required: true },
   duration: { type: String, required: true },
-  distance: { type: Number, required: true }, // Number type
+  distance: { type: Number, required: true },
   ticketCost: { type: Number, required: true },
-  driverPhoneNumber: { type: String, required: true },
+  driverPhoneNumber: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v) {
+        return /^\d{10}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid phone number!`
+    }
+  },
   checklist: { type: Object, required: true },
-  status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" }
-});
+  status: { 
+    type: String, 
+    enum: ["Pending", "Approved", "Rejected"], 
+    default: "Pending" 
+  }
+}, { timestamps: true });
 
 const PackageSchema = new mongoose.Schema(
   {
@@ -78,50 +93,201 @@ const PackageSchema = new mongoose.Schema(
 );
 
 
-const RegisterSchema = new mongoose.Schema(
-  {
-    fullName: { type: String, required: true },
-    userName: { type: String, required: true, unique: true },
-    phone: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: {
-      type: String,
-      required: true,
-      enum: ["Student", "Student Leader", "HOD", "Industry Representative"],
-    },
-    gender: {
-      type: String,
-      required: true,
-      enum: ["Male", "Female", "Other"],
-    },
-    studentID: { type: String, unique: true, sparse: true },
-    industryID: { type: String, unique: true, sparse: true },
-    // Add this profile reference field
-    profile: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Profile"
-    }
-  },
-  { timestamps: true }
-);
 
 
 const ProfileSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  fullname: { type: String, required: true },
   studentID: { type: String, default: null },
   industryID:{ type: String, default: null },
   branch: { type: String, default: null },
   email: { type: String, required: true, unique: true },
   phone: { type: String, default: null },
+  semester: { type: String, default: null },
   profileImage: { type: String, default: null },
   role: { type: String, enum: ["student", "faculty", "admin"], default: "student" },
   createdAt: { type: Date, default: Date.now },
 });
 
 
+const UndertakingSchema = new mongoose.Schema({
+  Obj_id: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "Register" },
+  studentName: { type: String, required: true },
+  semester: { type: String, required: true },
+  branch: { type: String, required: true },
+  rollNo: { type: String, required: true, unique: true },
+  studentID: { type: String, required: true },
+  parentName: { type: String, required: true },
+  placesVisited: { type: String, required: true },
+  tourPeriod: { type: String, required: true },
+  facultyDetails: { type: String, required: true },
+  studentSignature: { type: String, required: true }, // Stores file path
+  parentSignature: { type: String, required: true },  // Stores file path
+  submittedAt: { type: Date, default: Date.now }
+});
 
+const tempVerificationSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    default: undefined, // Important for sparse indexes
+    index: {
+      unique: true,
+      sparse: true,
+      partialFilterExpression: { email: { $type: "string" } }
+    },
+    validate: {
+      validator: (email) => !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+      message: "Invalid email format"
+    }
+  },
+  phone: {
+    type: String,
+    trim: true,
+    default: undefined, 
+    set: normalizePhone, // Important for sparse indexes
+    index: {
+      unique: true,
+      sparse: true,
+      partialFilterExpression: { phone: { $type: "string" } }
+    },
+    validate: {
+      validator: (phone) => !phone || /^\d{10}$/.test(phone),
+      message: "Phone must be 10 digits"
+    }
+  },
+  code: {
+    type: String,
+    required: true
+  },
+  attempts: {
+    type: Number,
+    default: 0
+  },
+  expiresAt: {
+    type: Date,
+    required: true,
+    index: { expires: 0 } // TTL index for auto-deletion
+  }
+}, { timestamps: true });
 
+const RegisterSchema = new mongoose.Schema({
+  fullName: { type: String, required: true },
+  userName: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    trim: true
+  },
+  phone: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    set: normalizePhone, 
+    validate: {
+      validator: v => /^\d{10}$/.test(v),
+      message: props => `${props.value} is not a valid phone number!`
+    }
+  },
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    validate: {
+      validator: validator.isEmail,
+      message: props => `${props.value} is not a valid email!`
+    }
+  },
+  password: { type: String, required: true },
+  role: {
+    type: String,
+    required: true,
+    enum: ["Student", "Student Leader", "HOD", "Industry Representative"],
+  },
+  gender: {
+    type: String,
+    required: true,
+    enum: ["Male", "Female", "Other"],
+  },
+  studentID: { 
+    type: String, 
+    unique: true, 
+    sparse: true
+  },
+  industryID: { 
+    type: String, 
+    unique: true, 
+    sparse: true
+  },
+  profile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Profile"
+  },
+  emailVerified: { type: Boolean, default: false },
+  phoneVerified: { type: Boolean, default: false },
+  resetPasswordToken: { type: String },
+resetPasswordExpires: { type: Date }
+}, { timestamps: true });
+
+// Indexes
+RegisterSchema.index({ phone: 1 }, { unique: true });
+RegisterSchema.index({ email: 1 }, { unique: true });
+
+// Pre-save hooks
+RegisterSchema.pre('save', function(next) {
+  // Format phone number
+  if (this.phone) {
+    this.phone = this.phone.replace(/\D/g, '');
+  }
+  
+  // Generate IDs based on role
+  if (this.role === "Student" && !this.studentID) {
+    this.studentID = `STU-${Math.floor(10000 + Math.random() * 90000)}`;
+  } else if (this.role === "Industry Representative" && !this.industryID) {
+    this.industryID = `IND-${Math.floor(10000 + Math.random() * 90000)}`;
+  }
+  
+  next();
+});
+// Compound index for better query performance
+tempVerificationSchema.index(
+  { phone: 1, email: 1 },
+  { 
+    unique: true, 
+    partialFilterExpression: { 
+      $or: [
+        { phone: { $exists: true } }, 
+        { email: { $exists: true } }
+      ] 
+    } 
+  }
+);
+const verifiedEmailSchema = new mongoose.Schema({
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
+  verifiedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const verifiedPhoneSchema = new mongoose.Schema({
+  phone: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+  verifiedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
 
 
 
@@ -131,7 +297,11 @@ module.exports = {
   Vote:mongoose.model("Vote", voteSchema),
   Register: mongoose.model("Register", RegisterSchema),
   Request: mongoose.model("Request", RequestSchema),
-
+  Undertaking:mongoose.model('Undertaking', UndertakingSchema),
   Profile: mongoose.model("Profile", ProfileSchema),
+  TempVerification:mongoose.model('TempVerification', tempVerificationSchema),
+  VerifiedEmail : mongoose.model('VerifiedEmail', verifiedEmailSchema),
+  VerifiedPhone: mongoose.model('VerifiedPhone', verifiedPhoneSchema)
+
 
 };

@@ -1,4 +1,3 @@
-// routes/itemRoutes.js
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
@@ -12,8 +11,12 @@ const {
   Package,
   Request,
   Profile,
-  Vote
-} = require("../models/Items"); // Import the Item model
+  Vote,
+  Undertaking,
+  TempVerification,
+  VerifiedEmail,
+  VerifiedPhone
+} = require("../models/Items");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -49,34 +52,30 @@ router.get("/", (req, res) => {
   res.send("Welcome to the IVJourney API!");
 });
 
-router.post("/upload-pdf", upload.single("file"), (req, res) => {
+
+// PDF Upload
+router.post("/upload-pdf",  uploadStudentRequests.single("file"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
-
   const filePath = `/uploads/${req.file.filename}`;
   res.json({ filePath });
 });
 
+// Authentication
 router.post("/Login", async (req, res) => {
   const { email, password } = req.body;
-  console.log(email, password);
-
   try {
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ error: "Email and password are required." });
+      return res.status(400).json({ error: "Email and password are required." });
     }
 
     const user = await Register.findOne({ email: email });
-    console.log(user.role);
-
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials." });
     }
-    const isPasswordValid = await bcrypt.compare(password, user.password);
 
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid credentials." });
     }
@@ -84,7 +83,6 @@ router.post("/Login", async (req, res) => {
     const token = jwt.sign({ userId: user._id }, "your_secret_key", {
       expiresIn: "1h",
     });
-    console.log("User logged in:", user.fullName, "-", user.role, user._id);
 
     res.status(200).json({
       message: "Login successful",
@@ -96,8 +94,8 @@ router.post("/Login", async (req, res) => {
         email: user.email,
         role: user.role,
         phone: user.phone,
-        studentID: user.studentID || null, // Include student ID if available
-        industryID: user.industryID || null, // Include industry ID if available
+        studentID: user.studentID || null,
+        industryID: user.industryID || null,
         createdAt: user.createdAt,
       },
     });
@@ -106,11 +104,9 @@ router.post("/Login", async (req, res) => {
   }
 });
 
-router.post("/packages", upload.single("image"), async (req, res) => {
+// Package Management
+router.post("/packages",  uploadGeneral.single("image"), async (req, res) => {
   try {
-    console.log("Received Data:", req.body); 
-    console.log("Received File:", req.file); 
-
     const price = Number(req.body.price);
     const activities = req.body.activities ? JSON.parse(req.body.activities) : [];
     const inclusions = Array.isArray(req.body.inclusions) ? req.body.inclusions : [req.body.inclusions];
@@ -118,15 +114,13 @@ router.post("/packages", upload.single("image"), async (req, res) => {
     let existingPackage = await Package.findOne({ packageName: req.body.packageName });
 
     if (existingPackage) {
-      // If a new image is uploaded, delete the old image
       if (req.file && existingPackage.image) {
         const oldImagePath = path.join(__dirname, "../uploads", existingPackage.image);
         if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath); // Delete old image
+          fs.unlinkSync(oldImagePath);
         }
       }
 
-      // Update existing package
       existingPackage.description = req.body.description;
       existingPackage.duration = req.body.duration;
       existingPackage.price = price;
@@ -135,14 +129,13 @@ router.post("/packages", upload.single("image"), async (req, res) => {
       existingPackage.instructions = req.body.instructions;
       
       if (req.file) {
-        existingPackage.image = path.basename(req.file.path); // Save only the filename
+        existingPackage.image = path.basename(req.file.path);
       }
 
       await existingPackage.save();
       return res.status(200).json({ message: "Package updated successfully!", package: existingPackage });
     }
 
-    // Create new package if it doesn't exist
     const newPackage = new Package({
       packageName: req.body.packageName,
       description: req.body.description,
@@ -151,12 +144,10 @@ router.post("/packages", upload.single("image"), async (req, res) => {
       activities: activities,
       inclusions: inclusions,
       instructions: req.body.instructions,
-      image: req.file ? path.basename(req.file.path) : null, // Save only the filename
-      votes: 0, // Initialize votes to 0
-      votePercentage: 0, 
+      image: req.file ? path.basename(req.file.path) : null,
+      votes: 0,
+      votePercentage: 0,
     });
-
-    console.log("New Package:", newPackage);
 
     await newPackage.save();
     res.status(201).json({ message: "Package saved successfully!", package: newPackage });
@@ -165,17 +156,16 @@ router.post("/packages", upload.single("image"), async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 router.get("/packages", async (_req, res) => {
   try {
     const packages = await Package.find();
-    
     if (!packages || packages.length === 0) {
       return res.status(404).json({ error: "No packages available" });
     }
 
     const formattedPackages = packages.map((pkg) => {
-      const imageUrl = pkg.image ? `http://${IP}:5000/uploads/${pkg.image}` : null;
-      console.log("Image URL:", imageUrl); // Debugging
+      const imageUrl = pkg.image ? `http://${IP}:5000/uploads/general/${pkg.image}` : null;
       return {
         label: pkg.packageName,
         value: pkg._id,
@@ -190,18 +180,16 @@ router.get("/packages", async (_req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-// Fetch a single package by ID
+
 router.get("/packages/:packageId", async (req, res) => {
   try {
     const { packageId } = req.params;
-
     const package = await Package.findById(packageId);
 
     if (!package) {
       return res.status(404).json({ error: "Package not found." });
     }
 
-    // Format the package with an image URL
     const imageUrl = package.image ? `http://${IP}:5000/uploads/${package.image}` : null;
     const formattedPackage = {
       ...package._doc,
@@ -215,13 +203,11 @@ router.get("/packages/:packageId", async (req, res) => {
   }
 });
 
-
-// Add feedback to a package
+// Feedback Management
 router.post("/packages/:packageId/feedback", async (req, res) => {
   const { packageId } = req.params;
   const { userId, rating, comment, name } = req.body;
 
-  // Validate input
   if (!userId || !rating || rating < 1 || rating > 5) {
     return res.status(400).json({ 
       error: "Rating (1-5 stars) and valid userId are required",
@@ -229,125 +215,55 @@ router.post("/packages/:packageId/feedback", async (req, res) => {
     });
   }
 
-  // Validate ObjectId format
-  if (!mongoose.Types.ObjectId.isValid(userId) || 
-      !mongoose.Types.ObjectId.isValid(packageId)) {
-    return res.status(400).json({ 
-      error: "Invalid ID format",
-      code: "INVALID_ID_FORMAT"
-    });
-  }
-
   try {
-    // Start a session for transaction
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const [package, user] = await Promise.all([
+      Package.findById(packageId),
+      Register.findById(userId).populate('profile')
+    ]);
 
-    try {
-      // Find package and user with profile data
-      const [package, user] = await Promise.all([
-        Package.findById(packageId).session(session),
-        Register.findById(userId).populate({
-          path: 'profile',
-          model: 'Profile'
-        }).session(session)
-      ]);
+    if (!package) return res.status(404).json({ error: "Package not found" });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-      if (!package) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(404).json({ 
-          error: "Package not found",
-          code: "PACKAGE_NOT_FOUND"
-        });
-      }
-      
-      if (!user) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(404).json({ 
-          error: "User not found",
-          code: "USER_NOT_FOUND",
-          details: `No user found with id: ${userId}`
-        });
-      }
-
-      // Check for existing feedback using the user's ID
-      const existingReviewIndex = package.reviews.findIndex(r => 
-        r.userId.toString() === userId.toString()
-      );
-
-      if (existingReviewIndex !== -1) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(409).json({  // Changed to 409 Conflict
-          error: "You've already reviewed this package",
-          code: "DUPLICATE_FEEDBACK",
-          existingReview: package.reviews[existingReviewIndex] // Return existing review
-        });
-      }
-
-      // Create new review
-      const newReview = {
-        userId: user._id,
-        fullName: name || user.fullName,
-        rating: Number(rating), // Ensure it's a number
-        date: new Date(),
-        user: {
-          _id: user._id,
-          fullName: name || user.fullName,
-          profileImage: user.profile?.profileImage || null // Simplified
-        },
-        ...(comment && { comment: comment.trim() })
-      };
-
-      // Update package
-      package.reviews.push(newReview);
-      package.rating = calculateAverageRating(package.reviews);
-      
-      await package.save({ session });
-
-      // Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
-
-      // Format the response
-      const response = {
-        success: true,
-        message: "Feedback submitted successfully",
-        review: newReview,
-        package: formatPackage(package)
-      };
-
-      // Debug log for successful submission
-      console.log('Feedback submitted:', {
-        package: package._id,
-        user: user._id,
-        rating: newReview.rating
+    const existingReview = package.reviews.find(r => r.userId.toString() === userId);
+    if (existingReview) {
+      return res.status(409).json({
+        error: "You've already reviewed this package",
+        existingReview
       });
-
-      return res.status(201).json(response);
-
-    } catch (error) {
-      // If any error occurs, abort the transaction
-      await session.abortTransaction();
-      session.endSession();
-      throw error; // This will be caught by the outer catch
     }
+
+    const newReview = {
+      userId: user._id,
+      fullName: name || user.fullName,
+      rating: Number(rating),
+      date: new Date(),
+      user: {
+        _id: user._id,
+        fullName: name || user.fullName,
+        profileImage: user.profile?.profileImage || null
+      },
+      ...(comment && { comment: comment.trim() })
+    };
+
+    package.reviews.push(newReview);
+    package.rating = calculateAverageRating(package.reviews);
+    await package.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Feedback submitted successfully",
+      review: newReview
+    });
 
   } catch (error) {
     console.error("Feedback submission error:", error);
-    
-    // Handle duplicate key error (might occur in race conditions)
-    if (error.code === 11000 || error.message.includes('duplicate')) {
-      return res.status(409).json({
-        error: "Duplicate feedback detected",
-        code: "DUPLICATE_FEEDBACK"
-      });
-    }
-
-    const errorResponse = {
+    return res.status(500).json({
       error: "Internal server error",
+      ...(process.env.NODE_ENV === 'development' && { details: error.message })
+    });
+  }
+});
+
       code: "SERVER_ERROR"
     };
 
@@ -445,7 +361,6 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
     const { packageId, reviewId } = req.params;
     const { userId, rating, comment, name } = req.body;
 
-    // Validate input
     if (!userId || !rating || rating < 1 || rating > 5) {
       return res.status(400).json({ 
         error: "Rating (1-5 stars) and valid userId are required",
@@ -453,7 +368,6 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    // Find the package
     const package = await Package.findById(packageId);
     if (!package) {
       return res.status(404).json({ 
@@ -462,7 +376,6 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    // Find the review to update
     const reviewIndex = package.reviews.findIndex(
       r => r._id.toString() === reviewId && r.userId.toString() === userId
     );
@@ -474,13 +387,11 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    // Update the review
     package.reviews[reviewIndex].rating = rating;
     package.reviews[reviewIndex].comment = comment;
     package.reviews[reviewIndex].fullName = name || package.reviews[reviewIndex].fullName;
     package.reviews[reviewIndex].date = new Date();
 
-    // Recalculate average rating
     package.rating = calculateAverageRating(package.reviews);
 
     await package.save();
@@ -499,13 +410,12 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
     });
   }
 });
-// Delete feedback for a package
+
 router.delete("/packages/:packageId/feedback/:reviewId", async (req, res) => {
   try {
     const { packageId, reviewId } = req.params;
     const { userId } = req.body;
 
-    // Validate input
     if (!userId) {
       return res.status(400).json({ 
         error: "Valid userId is required",
@@ -513,7 +423,6 @@ router.delete("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    // Find the package
     const package = await Package.findById(packageId);
     if (!package) {
       return res.status(404).json({ 
@@ -522,7 +431,6 @@ router.delete("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    // Find the review to delete
     const reviewIndex = package.reviews.findIndex(
       r => r._id.toString() === reviewId && r.userId.toString() === userId
     );
@@ -534,10 +442,8 @@ router.delete("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    // Remove the review
     package.reviews.splice(reviewIndex, 1);
 
-    // Recalculate average rating
     package.rating = package.reviews.length > 0 
       ? package.reviews.reduce((sum, r) => sum + r.rating, 0) / package.reviews.length
       : 0;
@@ -558,27 +464,24 @@ router.delete("/packages/:packageId/feedback/:reviewId", async (req, res) => {
     });
   }
 });
-// Endpoint to handle voting
+
+// Voting System
 router.post("/packages/vote", async (req, res) => {
   const { studentId, packageId } = req.body;
 
   try {
-    // Check if the student has already voted
     const existingVote = await Vote.findOne({ studentId });
     if (existingVote) {
       return res.status(400).json({ message: "You have already voted." });
     }
 
-    // Save the vote
     const newVote = new Vote({ studentId, packageId });
     await newVote.save();
 
-    // Update the package's vote count
     const pkg = await Package.findById(packageId);
     pkg.votes += 1;
     await pkg.save();
 
-    // Calculate vote percentages for all packages
     const allPackages = await Package.find();
     const totalVotes = allPackages.reduce((sum, pkg) => sum + pkg.votes, 0);
 
@@ -593,191 +496,359 @@ router.post("/packages/vote", async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 });
+
+// User Registration
 router.post("/register", async (req, res) => {
   try {
     const { fullName, userName, phone, email, password, role, gender } = req.body;
+    const normalizedPhone = phone.replace(/\D/g, '');
+    const normalizedEmail = email.toLowerCase();
 
     // Validate required fields
-    if (!fullName || !userName || !phone || !email || !password || !role || !gender) {
-      return res.status(400).json({ error: "All fields are required." });
+    const requiredFields = { fullName, userName, phone, email, password, role, gender };
+    for (const [field, value] of Object.entries(requiredFields)) {
+      if (!value) {
+        return res.status(400).json({ 
+          error: `${field} is required`,
+          field
+        });
+      }
     }
 
-    // Validate gender (optional, since enum in schema will handle it)
-    const validGenders = ["Male", "Female", "Other"];
-    if (!validGenders.includes(gender)) {
-      return res.status(400).json({ error: "Invalid gender value." });
+    // Validate email format
+    if (!validator.isEmail(normalizedEmail)) {
+      return res.status(400).json({ 
+        error: "Invalid email format",
+        field: "email"
+      });
     }
 
-    // Check if username, phone, or email already exists
+    // Check for existing user
     const existingUser = await Register.findOne({
-      $or: [{ userName }, { phone }, { email }],
+      $or: [
+        { userName },
+        { phone: normalizedPhone },
+        { email: normalizedEmail }
+      ]
     });
 
     if (existingUser) {
-      if (existingUser.userName === userName) {
-        return res.status(400).json({ error: "Username already exists.", field: "userName" });
-      }
-      if (existingUser.phone === phone) {
-        return res.status(400).json({ error: "Phone number already in use.", field: "phone" });
-      }
-      if (existingUser.email === email) {
-        return res.status(400).json({ error: "Email already in use.", field: "email" });
-      }
+      const conflicts = [];
+      if (existingUser.userName === userName) conflicts.push("username");
+      if (existingUser.phone === normalizedPhone) conflicts.push("phone");
+      if (existingUser.email === normalizedEmail) conflicts.push("email");
+      
+      return res.status(400).json({ 
+        error: "User already exists",
+        conflicts
+      });
+    }
+
+    // Check verifications
+    const [emailVerified, phoneVerified] = await Promise.all([
+      VerifiedEmail.findOne({ email: normalizedEmail }),
+      VerifiedPhone.findOne({ phone: normalizedPhone })
+    ]);
+
+    if (!emailVerified) {
+      return res.status(400).json({ 
+        error: "Email not verified",
+        field: "email"
+      });
+    }
+
+    if (!phoneVerified) {
+      return res.status(400).json({ 
+        error: "Phone number not verified",
+        field: "phone"
+      });
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user object
-    const userData = {
+    // Create new user
+    const newUser = await Register.create({
       fullName,
       userName,
-      phone,
-      email,
+      phone: normalizedPhone,
+      email: normalizedEmail,
       password: hashedPassword,
       role,
       gender,
-    };
+      emailVerified: true,
+      phoneVerified: true
+    });
 
-    // Generate IDs only for Student and Industry Representative
-    if (role === "Student") {
-      userData.studentID = `STU-${Math.floor(10000 + Math.random() * 90000)}`;
-    } else if (role === "Industry Representative") {
-      userData.industryID = `IND-${Math.floor(10000 + Math.random() * 90000)}`;
-    }
+    // Send welcome email
+    sendWelcomeEmail(newUser.email, newUser.fullName, newUser.role)
+      .catch(err => console.error('Email sending failed:', err));
 
-    // Create new user
-    const newUser = new Register(userData);
-    await newUser.save();
-    res.status(201).json({ message: "User registered successfully." });
+    // Cleanup verification records
+    await Promise.all([
+      VerifiedEmail.deleteOne({ email: normalizedEmail }),
+      VerifiedPhone.deleteOne({ phone: normalizedPhone })
+    ]);
+
+    res.status(201).json({ 
+      success: true,
+      message: "Registration successful",
+      user: {
+        id: newUser._id,
+        email: newUser.email,
+        role: newUser.role
+      }
+    });
+
   } catch (error) {
-    console.error("Registration Error:", error);
-
-    // Handle duplicate key errors (e.g., duplicate userName, phone, or email)
+    console.error("Registration error:", error);
+    
     if (error.code === 11000) {
-      if (error.keyValue.userName) {
-        return res.status(400).json({ error: "Username already exists.", field: "userName" });
-      }
-      if (error.keyValue.phone) {
-        return res.status(400).json({ error: "Phone number already in use.", field: "phone" });
-      }
-      if (error.keyValue.email) {
-        return res.status(400).json({ error: "Email already in use.", field: "email" });
-      }
-    }
-
-    // Handle validation errors (e.g., invalid role or gender)
-    if (error.name === "ValidationError") {
-      return res.status(400).json({ error: error.message });
-    }
-
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-router.get("/api/register", async (req, res) => {
-  try {
-    const { role } = req.query; // Get role from query parameters
-    console.log("Requested Role:", role);
-
-    if (!role) {
-      return res.status(400).json({ error: "Role parameter is required" });
-    }
-
-    // Fetch users based on role
-    const users = await Register.find({ role });
-    console.log("Fetched Users:", users);
-
-    if (users.length === 0) {
-      return res.status(404).json({ message: "No users found for this role" });
-    }
-
-    res.json(users);
-  } catch (error) {
-    console.error("Error fetching users by role:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-router.post("/submit-request", async (req, res) => {
-  try {
-    const requestData = req.body;
-
-    // Validate user ID
-    if (!mongoose.Types.ObjectId.isValid(requestData.Obj_id)) {
-      return res.status(400).json({ error: "Invalid user ID format" });
-    }
-    requestData.Obj_id = new mongoose.Types.ObjectId(requestData.Obj_id);
-
-    // Convert dates to UTC
-    requestData.submissionDate = new Date(requestData.submissionDate).toISOString();
-    requestData.date = new Date(requestData.date).toISOString();
-
-    // Convert distance to a number (removing 'km' if present)
-    if (typeof requestData.distance === "string") {
-      requestData.distance = parseFloat(requestData.distance.replace(/\D/g, "")); // Extract numbers
-    }
-
-    console.log("Received Request Data:", requestData);
-
-    // Validate request format
-    if (typeof requestData !== "object" || Array.isArray(requestData)) {
-      return res.status(400).json({ error: "Invalid request format" });
-    }
-
-    // Normalize data for duplicate check
-    const normalizedData = {
-      studentName: requestData.studentName.trim().toLowerCase(),
-      industry: requestData.industry.trim().toLowerCase(),
-      date: new Date(requestData.date).toISOString(),
-      email: requestData.email.trim().toLowerCase(),
-    };
-
-    console.log("Checking for duplicate request with:", normalizedData);
-
-    // Check for duplicate request
-    const existingRequest = await Request.findOne(normalizedData);
-
-    console.log("Existing Request Found:", existingRequest);
-
-    if (existingRequest) {
-      return res.status(409).json({ error: "Duplicate request already exists!" });
-    }
-
-    // Save request to MongoDB
-    const newRequest = new Request(requestData);
-    await newRequest.save();
-
-    res.status(201).json({ message: "Request submitted successfully!" });
-  } catch (error) {
-    console.error("Error submitting request:", error);
-    res.status(500).json({ error: "Failed to submit request." });
-  }
-});
-// 1️⃣ Insert or Update User Profile
-router.post("/updateProfile", upload.single("profileImage"), async (req, res) => {
-  const { name, studentID, industryID, branch, email, phone } = req.body;
-
-  try {
-    let profile = await Profile.findOne({ email });
-    let registerUser = await Register.findOne({ email });
-
-    if (!profile) {
-      // Create new profile
-      profile = new Profile({
-        name,
-        studentID: studentID || null,
-        industryID: industryID || null,
-        branch,
-        email,
-        phone,
-        profileImage: req.file ? `/uploads/${req.file.filename}` : null,
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ 
+        error: `${field} already exists`,
+        field 
       });
-      await profile.save();
+    }
 
-      // Update Register collection with profile reference
-      if (registerUser) {
-        registerUser.profile = profile._id;
-        await registerUser.save();
+    res.status(500).json({ 
+      error: "Registration failed",
+      details: error.message 
+    });
+  }
+});
+// In your backend routes
+router.post('/send-email-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate email format
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({ 
+        error: "Invalid email format",
+        field: "email"
+      });
+    }
+
+    // Check if email already registered
+    const existingUser = await Register.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ 
+        error: "Email already registered",
+        field: "email"
+      });
+    }
+
+    // Check if already verified (prevent duplicate verification)
+    const isAlreadyVerified = await VerifiedEmail.exists({ email });
+    if (isAlreadyVerified) {
+      return res.status(400).json({
+        error: "Email already verified",
+        field: "email"
+      });
+    }
+
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Store in temporary collection
+    await TempVerification.updateOne(
+      { email },
+      { 
+        $set: {
+          email,
+          code,
+          expiresAt,
+          attempts: 0
+        },
+        $unset: {
+          phone: ""
+        }
+      },
+      { upsert: true }
+    );
+
+    console.log('Verification code generated:', code);
+
+    // Send email
+    try {
+      await sendVerificationEmail(email, code);
+      console.log('Verification email sent successfully to:', email);
+      return res.json({ 
+        success: true, 
+        message: "Verification code sent" 
+      });
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Clean up the verification record if email fails
+      await TempVerification.deleteOne({ email });
+      return res.status(500).json({ 
+        error: "Failed to send verification email",
+        details: emailError.message
+      });
+    }
+
+  } catch (error) {
+    console.error("Verification error:", error);
+    
+    // Handle duplicate key errors specifically
+    if (error.code === 11000) {
+      return res.status(400).json({
+        error: "Verification already requested",
+        solution: "Wait 15 minutes or use the code already sent"
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Failed to process verification request",
+      details: error.message 
+    });
+  }
+});
+
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    // Basic validation
+    if (!email || !code) {
+      return res.status(400).json({ 
+        error: "Email and code are required",
+        fields: ["email", "code"]
+      });
+    }
+
+    // Find the verification record
+    const verification = await TempVerification.findOne({ email });
+    
+    if (!verification) {
+      return res.status(400).json({ 
+        error: "No verification request found",
+        solution: "Request a new verification code"
+      });
+    }
+
+    // Check attempts
+    if (verification.attempts >= 3) {
+      return res.status(429).json({ 
+        error: "Too many attempts",
+        solution: "Please request a new code"
+      });
+    }
+
+    // Verify code
+    if (verification.code !== code) {
+      await TempVerification.updateOne(
+        { email },
+        { $inc: { attempts: 1 } }
+      );
+      const remainingAttempts = 3 - (verification.attempts + 1);
+      return res.status(400).json({ 
+        error: "Invalid verification code",
+        details: `${remainingAttempts} attempts remaining`
+      });
+    }
+
+    // Check expiry
+    if (verification.expiresAt < new Date()) {
+      return res.status(400).json({ 
+        error: "Verification code expired",
+        solution: "Request a new code"
+      });
+    }
+
+    // Mark as verified - using updateOne with upsert to prevent duplicates
+    await VerifiedEmail.updateOne(
+      { email },
+      { $set: { email, verifiedAt: new Date() } },
+      { upsert: true }
+    );
+
+    // Clean up temporary verification
+    await TempVerification.deleteOne({ email });
+
+    res.json({ 
+      success: true, 
+      message: "Email verified successfully",
+      email
+    });
+
+  } catch (error) {
+    console.error("Email verification error:", error);
+    
+    // Handle duplicate key errors specifically
+    if (error.code === 11000) {
+      return res.status(400).json({
+        error: "Email already verified",
+        solution: "You can proceed to login"
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Email verification failed",
+      details: error.message 
+    });
+  }
+});
+// Send phone verification code
+
+router.post('/send-phone-verification', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    const normalizedPhone = phone.replace(/\D/g, '');
+
+    // Validate phone number
+    if (!/^\d{10}$/.test(normalizedPhone)) {
+      return res.status(400).json({ 
+        error: "Invalid phone number",
+        details: "Must be 10 digits without country code"
+      });
+    }
+
+    // Check if phone already registered
+    const existingUser = await Register.findOne({ phone: normalizedPhone });
+    if (existingUser) {
+      return res.status(400).json({ 
+        error: "Phone number already registered",
+        field: "phone"
+      });
+    }
+
+    // Generate verification code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
+
+    // Store verification data
+    await TempVerification.updateOne(
+      { phone: normalizedPhone },
+      {
+        $set: {
+          phone: normalizedPhone,
+          code,
+          expiresAt,
+          attempts: 0
+        },
+        $unset: { email: "" }
+      },
+      { upsert: true }
+    );
+
+    // Send SMS in production
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        const message = await client.messages.create({
+          body: `Your verification code is: ${code}`,
+          from: twilioPhone,
+          to: `+91${normalizedPhone}`
+        });
+        console.log('SMS sent:', message.sid);
+      } catch (error) {
+        console.error('Twilio error:', error);
+        return res.status(500).json({ 
+          error: "Failed to send SMS",
+          details: error.message
+        });
       }
     } else {
       // Update existing profile
@@ -808,46 +879,185 @@ router.post("/updateProfile", upload.single("profileImage"), async (req, res) =>
     // Return complete user data
     const updatedProfile = await Profile.findById(profile._id);
     res.json({ 
-      message: "Profile updated successfully", 
-      user: {
-        ...updatedProfile.toObject(),
-        profileImage: req.file 
-          ? `${IP}${updatedProfile.profileImage}`
-          : updatedProfile.profileImage
-      }
+      success: true, 
+      message: "Phone number verified successfully"
     });
+
   } catch (error) {
-    console.error("Error updating profile:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Phone verification error:", error);
+    res.status(500).json({ 
+      error: "Phone verification failed",
+      details: error.message 
+    });
   }
 });
-router.get("/getProfile/:email", async (req, res) => {
-  try {
-    const { email } = req.params;
-    const user = await Profile.findOne({ email });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+
+// User Management
+router.get("/api/register", async (req, res) => {
+  try {
+    const { role } = req.query;
+    if (!role) {
+      return res.status(400).json({ error: "Role parameter is required" });
     }
 
-    res.json({
-      name: user.name,
-      studentID: user.studentID,
-      branch: user.branch, // Department
-      phone: user.phone,
-      profileImage: user.profileImage
-        ? `http://${IP}:5000${user.profileImage}`
-        : null,
-    });
+    const users = await Register.find({ role });
+    if (users.length === 0) {
+      return res.status(404).json({ message: "No users found for this role" });
+    }
+
+    res.json(users);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error fetching users by role:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
+// Request Management
+// In your routes file
+router.get("/check-request/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log("Checking request for Object ID:", id);
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        error: "Invalid Object ID format",
+        exists: false
+      });
+    }
+
+    const existingRequest = await Request.findOne({
+      Obj_id: new mongoose.Types.ObjectId(id),  // Use the id from params directly
+      status: { $in: ["Pending", "Approved"] }  // Match your schema's enum case
+    });
+
+    console.log("Found Request:", existingRequest);
+    res.json({ 
+      exists: !!existingRequest,
+      request: existingRequest || null
+    });
+  } catch (error) {
+    console.error("Check request error:", error);
+    res.status(500).json({ 
+      error: "Server error while checking request",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      exists: false
+    });
+  }
+});
+
+router.post("/submit-request", async (req, res) => {
+  try {
+    const requestData = req.body;
+    console.log("Received request data:", requestData);
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(requestData.Obj_id)) {
+      return res.status(400).json({
+        error: "Invalid student ID format"
+      });
+    }
+
+    // Convert to ObjectId first
+    requestData.Obj_id = new mongoose.Types.ObjectId(requestData.Obj_id);
+
+    const requiredFields = [
+      "Obj_id", "role", "email", "studentName", "department",
+      "semester", "industry", "date", "studentsCount",
+      "faculty", "transport", "packageDetails", "activity",
+      "duration", "distance", "ticketCost", "driverPhoneNumber",
+      "checklist"
+    ];
+
+    const missingFields = requiredFields.filter(field => {
+      // Check if field is missing or empty string
+      return requestData[field] === undefined || 
+             requestData[field] === null || 
+             (typeof requestData[field] === 'string' && requestData[field].trim() === '');
+    });
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: "Missing required fields",
+        missingFields
+      });
+    }
+
+    // Type conversions
+    requestData.studentsCount = parseInt(requestData.studentsCount);
+    if (isNaN(requestData.studentsCount) || requestData.studentsCount <= 0) {
+      return res.status(400).json({
+        error: "Number of students must be a positive integer"
+      });
+    }
+
+    requestData.distance = parseFloat(requestData.distance);
+    requestData.ticketCost = parseFloat(requestData.ticketCost);
+    requestData.date = new Date(requestData.date);
+    requestData.submissionDate = new Date(requestData.submissionDate || Date.now());
+
+    // Handle empty studentRep
+    if (!requestData.studentRep || requestData.studentRep.trim() === '') {
+      requestData.studentRep = "Not specified";
+    }
+
+    // Duplicate Check
+    const existingRequest = await Request.findOne({
+      Obj_id: requestData.Obj_id,
+      status: { $in: ["pending", "approved"] }
+    });
+
+    if (existingRequest) {
+      return res.status(409).json({
+        error: "You have already submitted a request that is pending or approved.",
+        existingId: existingRequest._id,
+        status: existingRequest.status
+      });
+    }
+
+    // Create new request
+    const newRequest = new Request({
+      ...requestData,
+      status: "Pending" // Note the capital 'P' to match your enum
+    });
+
+    await newRequest.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Request submitted successfully",
+      requestId: newRequest._id
+    });
+
+  } catch (error) {
+    console.error("Request submission error:", error);
+    
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        error: "Validation failed",
+        details: errors
+      });
+    }
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        error: "Invalid data format",
+        details: error.message
+      });
+    }
+
+    return res.status(500).json({
+      error: "Internal server error",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
+  }
+});
 router.get("/requests/students", async (req, res) => {
   try {
-    const studentRequests = await Request.find().populate("Obj_id", "email fullName"); // Populate email from Register model
+    const studentRequests = await Request.find().populate("Obj_id", "email fullName");
     res.status(200).json(studentRequests);
   } catch (error) {
     console.error("Error fetching student requests:", error);
@@ -855,12 +1065,9 @@ router.get("/requests/students", async (req, res) => {
   }
 });
 
-// ✅ Fetch specific student request by user ID (`Obj_id`)
 router.get("/request-details/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-
-
     const userRequest = await Request.findOne({ Obj_id: userId }).sort({ submissionDate: -1 });
 
     if (!userRequest) {
@@ -878,25 +1085,18 @@ router.put("/request-status/:requestId", async (req, res) => {
   try {
     const { requestId } = req.params;
     const { status } = req.body;
-    console.log(requestId);
-    
 
-    // Ensure status is valid
     const validStatuses = ["Approved", "Rejected", "Pending"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid status value" });
     }
 
-    // Update request status in MongoDB
     const updatedRequest = await Request.findOneAndUpdate(
-      { Obj_id: requestId }, // Match Obj_id instead of _id
+      { Obj_id: requestId },
       { status },
       { new: true }
     );
     
-    console.log(updatedRequest);
-    
-
     if (!updatedRequest) {
       return res.status(404).json({ error: "Request not found" });
     }
@@ -908,13 +1108,9 @@ router.put("/request-status/:requestId", async (req, res) => {
   }
 });
 
-
 router.delete("/request-status/:id", async (req, res) => {
   try {
     const requestId = req.params.id;
-    console.log(requestId);
-    
-    // Find and delete the request
     const deletedRequest = await Request.findOneAndDelete({ Obj_id: new mongoose.Types.ObjectId(requestId) });
 
     if (!deletedRequest) {
@@ -928,34 +1124,194 @@ router.delete("/request-status/:id", async (req, res) => {
   }
 });
 
-// GET voted user details and gender ratio
+// Profile Management
+router.post("/updateProfile", uploadGeneral.single("profileImage"), async (req, res) => {
+  const { name, studentID, industryID, branch, semester, email, phone } = req.body;
+
+  // Validate required fields
+  if (!name || !email || !phone) {
+    // Clean up uploaded file if validation fails
+    if (req.file) {
+      const filePath = path.join(uploadDirs.general, req.file.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+    return res.status(400).json({ message: "Name, email, and phone are required" });
+  }
+
+  try {
+    // Find existing profile and register user
+    const [profile, registerUser] = await Promise.all([
+      Profile.findOne({ email }),
+      Register.findOne({ email })
+    ]);
+
+    // Handle file upload if exists
+    let oldImagePath = null;
+    const profileImage = req.file 
+      ? `/uploads/general/${req.file.filename}`
+      : profile?.profileImage;
+
+    // If new file uploaded and profile exists with old image, mark old image for deletion
+    if (req.file && profile?.profileImage) {
+      oldImagePath = path.join(__dirname, "..", profile.profileImage);
+    }
+
+    // Prepare update data
+    const updateData = {
+      name,
+      studentID: studentID || null,
+      industryID: industryID || null,
+      branch: branch || null,
+      semester: semester || null,
+      phone,
+      profileImage
+    };
+
+    // Update or create profile
+    let updatedProfile;
+    if (!profile) {
+      // Create new profile
+      updatedProfile = new Profile({
+        ...updateData,
+        email
+      });
+      await updatedProfile.save();
+
+      // Link to register user if exists
+      if (registerUser && !registerUser.profile) {
+        registerUser.profile = updatedProfile._id;
+        await registerUser.save();
+      }
+    } else {
+      // Update existing profile
+      updatedProfile = await Profile.findOneAndUpdate(
+        { email },
+        updateData,
+        { new: true }
+      );
+
+      // Link to register user if not already linked
+      if (registerUser && !registerUser.profile) {
+        registerUser.profile = updatedProfile._id;
+        await registerUser.save();
+      }
+
+      // Update profile image in all package reviews by this user
+      if (req.file || profileImage !== profile.profileImage) {
+        await Package.updateMany(
+          { "reviews.userId": registerUser?._id },
+          { 
+            $set: { 
+              "reviews.$[elem].user.profileImage": profileImage,
+              "reviews.$[elem].user.fullName": name
+            } 
+          },
+          { 
+            arrayFilters: [{ "elem.userId": registerUser?._id }],
+            multi: true 
+          }
+        );
+      }
+    }
+
+    // Delete old image after successful update (if it exists)
+    if (oldImagePath && fs.existsSync(oldImagePath)) {
+      try {
+        fs.unlinkSync(oldImagePath);
+      } catch (err) {
+        console.error("Error deleting old profile image:", err);
+        // Don't fail the request if deletion fails, just log it
+      }
+    }
+
+    // Prepare response
+    const responseData = {
+      message: "Profile updated successfully",
+      user: {
+        _id: updatedProfile._id,
+        name: updatedProfile.name,
+        email: updatedProfile.email,
+        studentID: updatedProfile.studentID,
+        industryID: updatedProfile.industryID,
+        branch: updatedProfile.branch,
+        semester: updatedProfile.semester,
+        phone: updatedProfile.phone,
+        profileImage: updatedProfile.profileImage 
+          ? `${IP}${updatedProfile.profileImage}`
+          : null,
+        role: registerUser?.role
+      }
+    };
+
+    res.json(responseData);
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    
+    // Clean up uploaded file if error occurred
+    if (req.file) {
+      const filePath = path.join(uploadDirs.general, req.file.filename);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (err) {
+          console.error("Error cleaning up uploaded file after error:", err);
+        }
+      }
+    }
+
+    res.status(500).json({ 
+      message: "Error updating profile",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+router.get("/getProfile/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+    const user = await Profile.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      name: user.name,
+      studentID: user.studentID,
+      branch: user.branch,
+      phone: user.phone,
+      semester:user.semester,
+      profileImage: user.profileImage
+        ? `http://${IP}:5000${user.profileImage}`
+        : null,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Voting Analytics
 router.get("/votes-details", async (req, res) => {
   try {
-    console.log("Fetching Votes...");
-
-    // Fetch all votes with populated student details
-    const votes = await Vote.find()
+    const votes = await Vote.find({ studentId: { $ne: null } }) // Only find votes with non-null studentId
       .populate({
         path: "studentId",
         model: "Register",
         select: "fullName gender studentID",
       })
-      .lean(); // ✅ Convert MongoDB documents to plain JSON for debugging
+      .lean();
 
-    console.log("Votes with Populated Data:", votes); // ✅ Check console output
-
-    // Calculate gender counts
     let maleCount = 0;
     let femaleCount = 0;
+    const validVotes = votes.filter(vote => vote.studentId); // Filter out votes where populate failed
 
-    votes.forEach((vote) => {
-      if (vote.studentId?.gender === "Male") maleCount++;
-      if (vote.studentId?.gender === "Female") femaleCount++;
+    validVotes.forEach((vote) => {
+      if (vote.studentId.gender === "Male") maleCount++;
+      if (vote.studentId.gender === "Female") femaleCount++;
     });
 
     const total = maleCount + femaleCount;
 
-    // Calculate gender ratio
     const genderRatio = {
       malePercentage: total ? (maleCount / total) * 100 : 0,
       femalePercentage: total ? (femaleCount / total) * 100 : 0,
@@ -963,15 +1319,13 @@ router.get("/votes-details", async (req, res) => {
       femaleCount,
     };
 
-    // Calculate total number of unique students who voted
-    const uniqueStudentIds = [...new Set(votes.map((vote) => vote.studentId?._id?.toString()))];
+    const uniqueStudentIds = [...new Set(validVotes.map(vote => vote.studentId._id.toString()))];
     const totalStudents = uniqueStudentIds.length;
 
-    // Send response
     res.json({
-      votedUsers: votes,
+      votedUsers: validVotes, // Only send valid votes
       genderRatio,
-      totalStudents, // Add total number of unique students
+      totalStudents,
     });
   } catch (error) {
     console.error("Error fetching votes:", error);
