@@ -92,7 +92,7 @@ router.post("/Login", async (req, res) => {
       role: user.role,
       userDetails: {
         _id: user._id,
-        fullName: user.fullName,
+        name: user.name,
         email: user.email,
         role: user.role,
         phone: user.phone,
@@ -236,12 +236,12 @@ router.post("/packages/:packageId/feedback", async (req, res) => {
 
     const newReview = {
       userId: user._id,
-      fullName: name || user.fullName,
+      name: name || user.name,
       rating: Number(rating),
       date: new Date(),
       user: {
         _id: user._id,
-        fullName: name || user.fullName,
+        name: name || user.name,
         profileImage: user.profile?.profileImage || null
       },
       ...(comment && { comment: comment.trim() })
@@ -379,7 +379,7 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
 
     package.reviews[reviewIndex].rating = rating;
     package.reviews[reviewIndex].comment = comment;
-    package.reviews[reviewIndex].fullName = name || package.reviews[reviewIndex].fullName;
+    package.reviews[reviewIndex].name = name || package.reviews[reviewIndex].name;
     package.reviews[reviewIndex].date = new Date();
 
     package.rating = calculateAverageRating(package.reviews);
@@ -490,12 +490,12 @@ router.post("/packages/vote", async (req, res) => {
 // User Registration
 router.post("/register", async (req, res) => {
   try {
-    const { fullName, userName, phone, email, password, role, gender } = req.body;
+    const { name, userName, phone, email, password, role, gender } = req.body;
     const normalizedPhone = phone.replace(/\D/g, '');
     const normalizedEmail = email.toLowerCase();
 
     // Validate required fields
-    const requiredFields = { fullName, userName, phone, email, password, role, gender };
+    const requiredFields = { name, userName, phone, email, password, role, gender };
     for (const [field, value] of Object.entries(requiredFields)) {
       if (!value) {
         return res.status(400).json({ 
@@ -559,7 +559,7 @@ router.post("/register", async (req, res) => {
 
     // Create new user
     const newUser = await Register.create({
-      fullName,
+      name,
       userName,
       phone: normalizedPhone,
       email: normalizedEmail,
@@ -571,7 +571,7 @@ router.post("/register", async (req, res) => {
     });
 
     // Send welcome email
-    sendWelcomeEmail(newUser.email, newUser.fullName, newUser.role)
+    sendWelcomeEmail(newUser.email, newUser.name, newUser.role)
       .catch(err => console.error('Email sending failed:', err));
 
     // Cleanup verification records
@@ -1047,7 +1047,7 @@ router.post("/submit-request", async (req, res) => {
 });
 router.get("/requests/students", async (req, res) => {
   try {
-    const studentRequests = await Request.find().populate("Obj_id", "email fullName");
+    const studentRequests = await Request.find().populate("Obj_id", "email name");
     res.status(200).json(studentRequests);
   } catch (error) {
     console.error("Error fetching student requests:", error);
@@ -1116,7 +1116,7 @@ router.delete("/request-status/:id", async (req, res) => {
 
 // Profile Management
 router.post("/updateProfile", uploadGeneral.single("profileImage"), async (req, res) => {
-  const { name, studentID, industryID, branch, semester, email, phone } = req.body;
+  const {name, studentID, industryID, branch, semester, email, phone } = req.body;
 
   // Validate required fields
   if (!name || !email || !phone) {
@@ -1193,7 +1193,7 @@ router.post("/updateProfile", uploadGeneral.single("profileImage"), async (req, 
           { 
             $set: { 
               "reviews.$[elem].user.profileImage": profileImage,
-              "reviews.$[elem].user.fullName": name
+              "reviews.$[elem].user.name": name
             } 
           },
           { 
@@ -1265,7 +1265,7 @@ router.get("/getProfile/:email", async (req, res) => {
     }
 
     res.json({
-      name: user.name,
+      name: user.name, 
       studentID: user.studentID,
       branch: user.branch,
       phone: user.phone,
@@ -1287,7 +1287,7 @@ router.get("/votes-details", async (req, res) => {
       .populate({
         path: "studentId",
         model: "Register",
-        select: "fullName gender studentID",
+        select: "name gender studentID",
       })
       .lean();
 
