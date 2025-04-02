@@ -20,10 +20,15 @@ const {
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const validator = require('validator');
 const IP = process.env.IP;
 const crypto = require('crypto');
+const twilio = require('twilio');
+const {sendVerificationEmail } = require('../context/emailverifie');
 const { sendWelcomeEmail, sendPasswordResetEmail} = require('../context/emailService');
 const { uploadStudentRequests, uploadGeneral} = require('../context/UploadSignature');
+const { register } = require("module");
+
 // const uploadDir = path.join(__dirname, "../uploads");
 // if (!fs.existsSync(uploadDir)) {
 //   fs.mkdirSync(uploadDir, { recursive: true });
@@ -562,7 +567,7 @@ router.post("/register", async (req, res) => {
       name,
       userName,
       phone: normalizedPhone,
-      email: normalizedEmail,
+      email,
       password: hashedPassword,
       role,
       gender,
@@ -788,7 +793,7 @@ router.post('/send-phone-verification', async (req, res) => {
     const { phone } = req.body;
     const normalizedPhone = phone.replace(/\D/g, '');
 
-    // Validate phone number
+    // Validate phone number (assume 10-digit format for now)
     if (!/^\d{10}$/.test(normalizedPhone)) {
       return res.status(400).json({ 
         error: "Invalid phone number",
@@ -805,6 +810,15 @@ router.post('/send-phone-verification', async (req, res) => {
       });
     }
 
+    // Rate limiting (Optional: Adjust based on needs)
+    const lastRequest = await TempVerification.findOne({ phone: normalizedPhone });
+    if (lastRequest && new Date() - lastRequest.updatedAt < 60000) { // 1-minute cooldown
+      return res.status(429).json({
+        error: "Too many requests",
+        details: "Please wait a minute before requesting a new code."
+      });
+    }
+
     // Generate verification code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
@@ -813,23 +827,18 @@ router.post('/send-phone-verification', async (req, res) => {
     await TempVerification.updateOne(
       { phone: normalizedPhone },
       {
-        $set: {
-          phone: normalizedPhone,
-          code,
-          expiresAt,
-          attempts: 0
-        },
+        $set: { phone: normalizedPhone, code, expiresAt, attempts: 0 },
         $unset: { email: "" }
       },
       { upsert: true }
     );
 
-    // Send SMS in production
+    // Send SMS only in production
     if (process.env.NODE_ENV === 'production') {
       try {
         const message = await client.messages.create({
           body: `Your verification code is: ${code}`,
-          from: twilioPhone,
+          from: process.env.TWILIO_PHONE_NUMBER,
           to: `+91${normalizedPhone}`
         });
         console.log('SMS sent:', message.sid);
@@ -841,33 +850,71 @@ router.post('/send-phone-verification', async (req, res) => {
         });
       }
     } else {
-      // Update existing profile
-      if (req.file && profile.profileImage) {
-        const oldImagePath = path.join(__dirname, "..", profile.profileImage);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-        }
-      }
-
-      profile.name = name;
-      if (studentID) profile.studentID = studentID;
-      if (industryID) profile.industryID = industryID;
-      profile.branch = branch;
-      profile.phone = phone;
-      if (req.file) {
-        profile.profileImage = `/uploads/${req.file.filename}`;
-      }
-      await profile.save();
-
-      // Update Register collection if needed
-      if (registerUser && !registerUser.profile) {
-        registerUser.profile = profile._id;
-        await registerUser.save();
-      }
+      console.log(`[DEV] Verification code for ${normalizedPhone}: ${code}`);
     }
 
-    // Return complete user data
-    const updatedProfile = await Profile.findById(profile._id);
+    res.json({ 
+      success: true, 
+      message: "Verification code sent"
+    });
+
+  } catch (error) {
+    console.error("Phone verification error:", error);
+    res.status(500).json({ 
+      error: "Failed to process verification request",
+      details: error.message 
+    });
+  }
+});
+
+
+// Verify phone code
+
+router.post('/verify-phone', async (req, res) => {
+  try {
+    const { phone, code } = req.body;
+    const normalizedPhone = phone.replace(/\D/g, '');
+
+    // Validate input
+    if (!normalizedPhone || !code) {
+      return res.status(400).json({ error: "Phone and code are required" });
+    }
+
+    // Find verification record
+    const verification = await TempVerification.findOne({ phone: normalizedPhone });
+    if (!verification) {
+      return res.status(400).json({ error: "No verification request found" });
+    }
+
+    // Check attempts
+    if (verification.attempts >= 3) {
+      return res.status(429).json({ error: "Too many attempts" });
+    }
+
+    // Verify code
+    if (verification.code !== code) {
+      await TempVerification.updateOne(
+        { phone: normalizedPhone },
+        { $inc: { attempts: 1 } }
+      );
+      return res.status(400).json({ error: "Invalid verification code" });
+    }
+
+    // Check expiry
+    if (verification.expiresAt < new Date()) {
+      return res.status(400).json({ error: "Verification code expired" });
+    }
+
+    // Mark as verified
+    await VerifiedPhone.updateOne(
+      { phone: normalizedPhone },
+      { $set: { phone: normalizedPhone, verifiedAt: new Date() } },
+      { upsert: true }
+    );
+
+    // Cleanup
+    await TempVerification.deleteOne({ phone: normalizedPhone });
+
     res.json({ 
       success: true, 
       message: "Phone number verified successfully"
@@ -878,11 +925,9 @@ router.post('/send-phone-verification', async (req, res) => {
     res.status(500).json({ 
       error: "Phone verification failed",
       details: error.message 
-    });
-  }
+    });
+  }
 });
-
-
 // User Management
 router.get("/api/register", async (req, res) => {
   try {
