@@ -26,7 +26,7 @@ const crypto = require('crypto');
 const twilio = require('twilio');
 const {sendVerificationEmail } = require('../context/emailverifie');
 const { sendWelcomeEmail, sendPasswordResetEmail} = require('../context/emailService');
-const { uploadStudentRequests, uploadGeneral} = require('../context/UploadSignature');
+const { uploadStudentRequests, uploadGeneral,uploadSignatures } = require('../context/UploadSignature');
 const { register } = require("module");
 
 // const uploadDir = path.join(__dirname, "../uploads");
@@ -54,6 +54,25 @@ const { register } = require("module");
 // });
 
 // const upload = multer({ storage });
+
+// Add this to your backend utility functions
+const cleanupFiles = (files) => {
+  if (!files) return;
+  
+  const filePaths = Object.values(files).flat().map(file => file.path);
+  const fs = require('fs');
+  const path = require('path');
+  
+  filePaths.forEach(filePath => {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (err) {
+      console.error('Error deleting file:', filePath, err);
+    }
+  });
+};
 
 router.get("/", (req, res) => {
   res.send("Welcome to the IVJourney API!");
@@ -1365,6 +1384,82 @@ router.get("/votes-details", async (req, res) => {
   } catch (error) {
     console.error("Error fetching votes:", error);
     res.status(500).json({ message: "Server error", error });
+  }
+});
+router.post('/undertaking', uploadSignatures, async (req, res) => {
+  try {
+    // Validate required fields
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+
+    const requiredFields = [
+      'studentName', 'semester', 'branch', 'rollNo', 'studentID',
+      'parentName', 'placesVisited', 'tourPeriod', 'facultyDetails'
+    ];
+
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    if (missingFields.length > 0) {
+      await cleanupFiles(req.files);
+      return res.status(400).json({
+        error: 'Missing required fields',
+        missingFields
+      });
+    }
+
+    // Check for existing undertaking
+    const existing = await Undertaking.findOne({
+      Obj_id: req.body.obj_id,
+      studentID: req.body.studentID,
+    });
+
+    if (existing) {
+      await cleanupFiles(req.files);
+      return res.status(409).json({
+        error: 'Only one undertaking per semester allowed',
+        details: {
+          existingSubmission: {
+            date: existing.createdAt,
+            semester: existing.semester
+          }
+        }
+      });
+    }
+
+    // Create and save the undertaking
+    const undertaking = new Undertaking({
+      Obj_id: req.body.obj_id,
+      studentName: req.body.studentName,
+      semester: req.body.semester,
+      branch: req.body.branch,
+      rollNo: req.body.rollNo,
+      studentID: req.body.studentID,
+      parentName: req.body.parentName,
+      placesVisited: req.body.placesVisited,
+      tourPeriod: req.body.tourPeriod,
+      facultyDetails: req.body.facultyDetails,
+      studentSignature: req.files?.studentSignature?.[0]?.filename
+        ? `/uploads/student-signatures/${req.files.studentSignature[0].filename}`
+        : null,
+      parentSignature: req.files?.parentSignature?.[0]?.filename
+        ? `/uploads/parent-signatures/${req.files.parentSignature[0].filename}`
+        : null
+    });
+
+    await undertaking.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Undertaking submitted successfully',
+      data: undertaking
+    });
+
+  } catch (error) {
+    console.error('Error submitting undertaking:', error);
+    await cleanupFiles(req.files);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
