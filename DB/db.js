@@ -2,8 +2,8 @@
 const mongoose = require('mongoose');
 // require('dotenv').config({ path: '../.env' }); // Load environment variables
 require('dotenv').config(); // Automatically loads from the root directory
-// const uri = 'mongodb://localhost:27017/nativeapp';
-const uri = process.env.MONGODB_URI;
+const uri = 'mongodb://localhost:27017/nativeapp';
+// const uri = process.env.MONGODB_URI;
 
 if (!uri) {
     console.error("MONGODB_URI is not defined!");

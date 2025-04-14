@@ -163,6 +163,10 @@ router.post("/Login", async (req, res) => {
     res.status(500).json({ _error: "Internal server error" });
   }
 });
+router.get("/Login", (req, res) => {
+  res.status(200).send("Login endpoint is live");
+});
+
 
 // Package Management
 router.post("/packages",  uploadGeneral.single("image"), async (req, res) => {

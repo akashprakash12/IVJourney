@@ -8,7 +8,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "server": "node src/server.js",
-    "dev-server": "nodemon src/server.js",
+    "dev-server": "nodemon src/Backend/server.js",
     "test": "echo \"No tests found\" && exit 0",
     "lint": "eslint .",
     "prebuild": "npm run lint"
