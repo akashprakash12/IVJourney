@@ -1,10 +1,13 @@
-module.exports = function (api) {
+module.exports = function(api) {
   api.cache(true);
   return {
     presets: [
-      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
-      "nativewind/babel",
+      ['babel-preset-expo', { jsxImportSource: 'nativewind' }],
+      'nativewind/babel'
     ],
-    plugins: ["module:react-native-dotenv"], 
+    plugins: [
+      'react-native-reanimated/plugin', // Add this if using Reanimated
+      'module:react-native-dotenv'
+    ]
   };
 };

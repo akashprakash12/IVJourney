@@ -4,6 +4,8 @@
     "slug": "my-app",
     "scheme": "ivjourney",
     "version": "1.0.0",
+    "entryPoint": "./index.js",
+    "jsEngine": "hermes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",

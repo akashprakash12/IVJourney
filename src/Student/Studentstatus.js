@@ -5,7 +5,7 @@ import { IP } from "@env";
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
-import { FormData } from 'formdata-node'; // If using in node
+// import { FormData } from 'formdata-node'; // If using in node
 
 
 export default function Studentstatus({ route }) {

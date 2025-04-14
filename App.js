@@ -1,20 +1,19 @@
-import * as React from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { ThemeProvider } from "./context/ThemeContext";
-import { AuthProvider } from "./context/Authcontext";
-import AppNavigation from "./AppNavigation";
-import { Provider as PaperProvider } from "react-native-paper";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/Authcontext';
+import { Provider as PaperProvider } from 'react-native-paper';
+import AppNavigation from './AppNavigation';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <PaperProvider> 
-      <ThemeProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <ThemeProvider>
+          <PaperProvider>
             <AppNavigation />
-          </GestureHandlerRootView>
-      </ThemeProvider>
-      </PaperProvider>
-    </AuthProvider>
+          </PaperProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
