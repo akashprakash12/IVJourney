@@ -1,18 +1,28 @@
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+const nodemailer = require('nodemailer');
 
 // Public URL to your hosted image
 const INDUSTRIAL_IMAGE_URL = 'https://images.unsplash.com/photo-1502791451862-7bd8c1df43a7?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
-export const sendWelcomeEmail = async (email, name, role) => {
+// Ensure environment variables are set
+if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS || !process.env.EMAIL_FROM) {
+  throw new Error('Missing required environment variables for email service.');
+}
+
+// Create Nodemailer transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
+  },
+});
+
+const sendWelcomeEmail = async (email, name, role) => {
   try {
-    const fromAddress = process.env.EMAIL_FROM || 'IVJourney <onboarding@resend.dev>';
-    
-    await resend.emails.send({
-      from: fromAddress,
+    const mailOptions = {
+      from: process.env.EMAIL_FROM,
       to: email,
-      subject: `🎉 Welcome to IVJourney - Your Industrial Visit Journey Begins!`,
+      subject: '🎉 Welcome to IVJourney - Your Industrial Visit Journey Begins!',
       html: `
       <!DOCTYPE html>
       <html>
@@ -31,7 +41,6 @@ export const sendWelcomeEmail = async (email, name, role) => {
               <h1>Welcome to IVJourney!</h1>
           </div>
           
-          <!-- Use hosted image URL -->
           <img src="${INDUSTRIAL_IMAGE_URL}" alt="Industrial Visit" class="industry-img">
           
           <div class="content">
@@ -47,7 +56,6 @@ export const sendWelcomeEmail = async (email, name, role) => {
                   <li>Career-enhancing insights</li>
               </ul>
               
-              <!-- Fallback text for images -->
               <div style="display: none; max-height: 0px; overflow: hidden;">
                   Industrial Visit Image: ${INDUSTRIAL_IMAGE_URL}
               </div>
@@ -64,12 +72,57 @@ export const sendWelcomeEmail = async (email, name, role) => {
       </body>
       </html>
       `,
-    });
-    
-    console.log('Email with industrial image sent to:', email);
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Welcome email sent to:', email, 'Message ID:', info.messageId);
     return true;
   } catch (error) {
-    console.error('Failed to send email:', error);
+    console.error('Failed to send welcome email:', error);
     throw new Error('Failed to send welcome email');
   }
 };
+
+const sendPasswordResetEmail = async (email, name, resetLink) => {
+  try {
+    console.log(`Attempting to send password reset email to: ${email}`);
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: '🔒 Password Reset Request',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #F22E63;">Password Reset Request</h2>
+          <p>Hello ${name},</p>
+          <p>We received a request to reset your password. Click the button below to proceed:</p>
+          <a href="${resetLink}" 
+             style="background-color: #F22E63; color: white; padding: 12px 24px; 
+                    text-decoration: none; border-radius: 5px; display: inline-block; 
+                    margin: 20px 0;">
+            Reset Password
+          </a>
+          <p>If you didn't request this, please ignore this email.</p>
+          <p style="margin-top: 30px; font-size: 12px; color: #777;">
+            This link will expire in 1 hour for security reasons.
+          </p>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Password reset email sent to:', email, 'Message ID:', info.messageId);
+    return { success: true, info };
+  } catch (error) {
+    console.error('Failed to send password reset email:', error);
+    return { 
+      success: false, 
+      error: {
+        message: error.message,
+        stack: error.stack
+      }
+    };
+  }
+};
+
+module.exports = { sendWelcomeEmail, sendPasswordResetEmail };

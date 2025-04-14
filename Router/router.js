@@ -30,69 +30,71 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
 const client = require('twilio')(accountSid, authToken); 
-
+const {  uploadSignatures, 
+  uploadStudentRequests,
+  uploadGeneral } = require('../context/UploadSignature');
 const IP = process.env.IP;
 
 
 
-// Configure upload directories
-const uploadDir = path.join(__dirname, "../uploads");
-const studentSigDir = path.join(uploadDir, "student-signatures");
-const parentSigDir = path.join(uploadDir, "parent-signatures");
+// // Configure upload directories
+// const uploadDir = path.join(__dirname, "../uploads");
+// const studentSigDir = path.join(uploadDir, "student-signatures");
+// const parentSigDir = path.join(uploadDir, "parent-signatures");
 
-// Create directories if they don't exist
-[uploadDir, studentSigDir, parentSigDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
+// // Create directories if they don't exist
+// [uploadDir, studentSigDir, parentSigDir].forEach(dir => {
+//   if (!fs.existsSync(dir)) {
+//     fs.mkdirSync(dir, { recursive: true });
+//   }
+// });
 
-// Configure Multer storage for general uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  }
-});
+// // Configure Multer storage for general uploads
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, uploadDir);
+//   },
+//   filename: (req, file, cb) => {
+//     const ext = path.extname(file.originalname);
+//     cb(null, `${uuidv4()}${ext}`);
+//   }
+// });
 
-// Configure Multer storage for signatures
-const signatureStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let folder = '';
-    if (file.fieldname === 'studentSignature') {
-      folder = 'student-signatures';
-    } else if (file.fieldname === 'parentSignature') {
-      folder = 'parent-signatures';
-    }
-    cb(null, path.join(uploadDir, folder));
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  }
-});
+// // Configure Multer storage for signatures
+// const signatureStorage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     let folder = '';
+//     if (file.fieldname === 'studentSignature') {
+//       folder = 'student-signatures';
+//     } else if (file.fieldname === 'parentSignature') {
+//       folder = 'parent-signatures';
+//     }
+//     cb(null, path.join(uploadDir, folder));
+//   },
+//   filename: (req, file, cb) => {
+//     const ext = path.extname(file.originalname);
+//     cb(null, `${uuidv4()}${ext}`);
+//   }
+// });
 
-// File filter for images only
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed!'), false);
-  }
-};
+// // File filter for images only
+// const fileFilter = (req, file, cb) => {
+//   if (file.mimetype.startsWith('image/')) {
+//     cb(null, true);
+//   } else {
+//     cb(new Error('Only image files are allowed!'), false);
+//   }
+// };
 
 // Initialize Multer instances
-const upload = multer({ storage });
-const uploadSignatures = multer({ 
-  storage: signatureStorage,
-  fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
-});
+// const upload = multer({ storage });
+// const uploadSignatures = multer({ 
+//   storage: signatureStorage,
+//   fileFilter,
+//   limits: {
+//     fileSize: 5 * 1024 * 1024 // 5MB limit
+//   }
+// });
 
 // Helper functions
 function calculateAverageRating(reviews) {
@@ -126,13 +128,42 @@ router.get("/", (req, res) => {
   res.send("Welcome to the IVJourney API!");
 });
 
-// PDF Upload
-router.post("/upload-pdf", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
+
+
+router.post("/upload-pdf", uploadStudentRequests.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const { requestId } = req.body;
+    
+    // Delete any existing PDF for this request
+    if (requestId) {
+      try {
+        const existingRequest = await Request.findById(requestId);
+        if (existingRequest && existingRequest.pdfPath) {
+          const oldFilePath = path.join(__dirname, '../', existingRequest.pdfPath);
+          if (fs.existsSync(oldFilePath)) {
+            fs.unlinkSync(oldFilePath);
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting old PDF:", error);
+      }
+    }
+
+    const filePath = `/uploads/student-requests/${req.file.filename}`;
+    
+    res.json({ 
+      message: "PDF uploaded successfully",
+      filePath: filePath,
+      fileName: req.file.filename
+    });
+  } catch (error) {
+    console.error("Error in PDF upload:", error);
+    res.status(500).json({ error: "Error processing PDF upload" });
   }
-  const filePath = `/uploads/${req.file.filename}`;
-  res.json({ filePath });
 });
 
 // Authentication
@@ -178,7 +209,7 @@ router.post("/Login", async (req, res) => {
 });
 
 // Package Management
-router.post("/packages", upload.single("image"), async (req, res) => {
+router.post("/packages",  uploadGeneral.single("image"), async (req, res) => {
   try {
     const price = Number(req.body.price);
     const activities = req.body.activities ? JSON.parse(req.body.activities) : [];
@@ -238,7 +269,7 @@ router.get("/packages", async (_req, res) => {
     }
 
     const formattedPackages = packages.map((pkg) => {
-      const imageUrl = pkg.image ? `http://${IP}:5000/uploads/${pkg.image}` : null;
+      const imageUrl = pkg.image ? `http://${IP}:5000/uploads/general/${pkg.image}` : null;
       return {
         label: pkg.packageName,
         value: pkg._id,
@@ -598,6 +629,7 @@ router.post("/register", async (req, res) => {
     });
   }
 });
+// In your backend routes
 // In your backend routes
 router.post('/send-email-verification', async (req, res) => {
   try {
@@ -1073,6 +1105,35 @@ router.post("/submit-request", async (req, res) => {
     });
   }
 });
+// // In your backend routes
+// router.post("/save-pdf-reference", async (req, res) => {
+//   try {
+//     const { requestId, pdfPath, pdfName } = req.body;
+    
+//     // Update the request in your database with the PDF reference
+//     const updatedRequest = await Request.findByIdAndUpdate(
+//       requestId,
+//       { 
+//         pdfPath: pdfPath,
+//         pdfName: pdfName,
+//         pdfGeneratedAt: new Date()
+//       },
+//       { new: true }
+//     );
+
+//     res.json({
+//       success: true,
+//       message: "PDF reference saved",
+//       request: updatedRequest
+//     });
+//   } catch (error) {
+//     console.error("Error saving PDF reference:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Error saving PDF reference"
+//     });
+//   }
+// });
 router.get("/requests/students", async (req, res) => {
   try {
     const studentRequests = await Request.find().populate("Obj_id", "email fullName");
@@ -1143,11 +1204,16 @@ router.delete("/request-status/:id", async (req, res) => {
 });
 
 // Profile Management
-router.post("/updateProfile", upload.single("profileImage"), async (req, res) => {
+router.post("/updateProfile", uploadGeneral.single("profileImage"), async (req, res) => {
   const { name, studentID, industryID, branch, semester, email, phone } = req.body;
 
   // Validate required fields
   if (!name || !email || !phone) {
+    // Clean up uploaded file if validation fails
+    if (req.file) {
+      const filePath = path.join(uploadDirs.general, req.file.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
     return res.status(400).json({ message: "Name, email, and phone are required" });
   }
 
@@ -1159,9 +1225,15 @@ router.post("/updateProfile", upload.single("profileImage"), async (req, res) =>
     ]);
 
     // Handle file upload if exists
+    let oldImagePath = null;
     const profileImage = req.file 
-      ? `/uploads/${req.file.filename}`
+      ? `/uploads/general/${req.file.filename}`
       : profile?.profileImage;
+
+    // If new file uploaded and profile exists with old image, mark old image for deletion
+    if (req.file && profile?.profileImage) {
+      oldImagePath = path.join(__dirname, "..", profile.profileImage);
+    }
 
     // Prepare update data
     const updateData = {
@@ -1169,7 +1241,7 @@ router.post("/updateProfile", upload.single("profileImage"), async (req, res) =>
       studentID: studentID || null,
       industryID: industryID || null,
       branch: branch || null,
-      semester: semester || null, // Handle semester field
+      semester: semester || null,
       phone,
       profileImage
     };
@@ -1190,14 +1262,6 @@ router.post("/updateProfile", upload.single("profileImage"), async (req, res) =>
         await registerUser.save();
       }
     } else {
-      // Delete old image if new one is uploaded
-      if (req.file && profile.profileImage) {
-        const oldImagePath = path.join(__dirname, "..", profile.profileImage);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-        }
-      }
-
       // Update existing profile
       updatedProfile = await Profile.findOneAndUpdate(
         { email },
@@ -1209,6 +1273,33 @@ router.post("/updateProfile", upload.single("profileImage"), async (req, res) =>
       if (registerUser && !registerUser.profile) {
         registerUser.profile = updatedProfile._id;
         await registerUser.save();
+      }
+
+      // Update profile image in all package reviews by this user
+      if (req.file || profileImage !== profile.profileImage) {
+        await Package.updateMany(
+          { "reviews.userId": registerUser?._id },
+          { 
+            $set: { 
+              "reviews.$[elem].user.profileImage": profileImage,
+              "reviews.$[elem].user.fullName": name
+            } 
+          },
+          { 
+            arrayFilters: [{ "elem.userId": registerUser?._id }],
+            multi: true 
+          }
+        );
+      }
+    }
+
+    // Delete old image after successful update (if it exists)
+    if (oldImagePath && fs.existsSync(oldImagePath)) {
+      try {
+        fs.unlinkSync(oldImagePath);
+      } catch (err) {
+        console.error("Error deleting old profile image:", err);
+        // Don't fail the request if deletion fails, just log it
       }
     }
 
@@ -1222,12 +1313,12 @@ router.post("/updateProfile", upload.single("profileImage"), async (req, res) =>
         studentID: updatedProfile.studentID,
         industryID: updatedProfile.industryID,
         branch: updatedProfile.branch,
-        semester: updatedProfile.semester, // Include semester in response
+        semester: updatedProfile.semester,
         phone: updatedProfile.phone,
         profileImage: updatedProfile.profileImage 
           ? `${IP}${updatedProfile.profileImage}`
           : null,
-        role: registerUser?.role // Include role if available
+        role: registerUser?.role
       }
     };
 
@@ -1237,9 +1328,13 @@ router.post("/updateProfile", upload.single("profileImage"), async (req, res) =>
     
     // Clean up uploaded file if error occurred
     if (req.file) {
-      const filePath = path.join(__dirname, "../uploads", req.file.filename);
+      const filePath = path.join(uploadDirs.general, req.file.filename);
       if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+        try {
+          fs.unlinkSync(filePath);
+        } catch (err) {
+          console.error("Error cleaning up uploaded file after error:", err);
+        }
       }
     }
 
@@ -1318,112 +1413,290 @@ router.get("/votes-details", async (req, res) => {
 });
 
 // Undertaking Form Submission with Multer
-router.post('/undertaking', 
-  uploadSignatures.fields([
-    { name: 'studentSignature', maxCount: 1 },
-    { name: 'parentSignature', maxCount: 1 }
-  ]),
-  async (req, res) => {
-    try {
-      const {
-        studentName,
-        semester,
-        branch,
-        rollNo,
-        parentName,
-        placesVisited,
-        tourPeriod,
-        facultyDetails
-      } = req.body;
 
-      const requiredFields = {
-        studentName,
-        semester,
-        branch,
-        rollNo,
-        parentName,
-        placesVisited,
-        tourPeriod,
-        facultyDetails
-      };
 
-      for (const [field, value] of Object.entries(requiredFields)) {
-        if (!value) {
-          if (req.files) {
-            Object.values(req.files).forEach(files => {
-              files.forEach(file => {
-                fs.unlinkSync(file.path);
-              });
-            });
-          }
-          return res.status(400).json({ 
-            error: `${field} is required`,
-            field
-          });
-        }
-      }
-
-      const existing = await Undertaking.findOne({ rollNo });
-      if (existing) {
-        if (req.files) {
-          Object.values(req.files).forEach(files => {
-            files.forEach(file => {
-              fs.unlinkSync(file.path);
-            });
-          });
-        }
-        return res.status(400).json({ 
-          error: 'An undertaking already exists for this roll number',
-          rollNo
-        });
-      }
-
-      const studentSigPath = req.files.studentSignature 
-        ? `/uploads/student-signatures/${req.files.studentSignature[0].filename}`
-        : null;
-      
-      const parentSigPath = req.files.parentSignature 
-        ? `/uploads/parent-signatures/${req.files.parentSignature[0].filename}`
-        : null;
-
-      const undertaking = new Undertaking({
-        studentName,
-        semester,
-        branch,
-        rollNo,
-        parentName,
-        placesVisited,
-        tourPeriod,
-        facultyDetails,
-        studentSignature: studentSigPath,
-        parentSignature: parentSigPath
-      });
-
-      await undertaking.save();
-
-      res.status(201).json({
-        success: true,
-        message: 'Undertaking submitted successfully',
-        data: undertaking
-      });
-
-    } catch (error) {
-      console.error('Error submitting undertaking:', error);
-      
-      if (req.files) {
-        Object.values(req.files).forEach(files => {
-          files.forEach(file => {
-            fs.unlinkSync(file.path);
-          });
-        });
-      }
-
-      res.status(500).json({ 
-        error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+// Submit new undertaking
+router.post('/undertaking', uploadSignatures, async (req, res) => {
+  try {
+    // Validate required fields
+    console.log('Body:', req.body);
+  console.log('Files:', req.files);
+    const requiredFields = [
+      'studentName', 'semester', 'branch', 'rollNo','studentID',
+      'parentName', 'placesVisited', 'tourPeriod', 'facultyDetails'
+    ];
+    
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    if (missingFields.length > 0) {
+      await cleanupFiles(req.files);
+      return res.status(400).json({
+        error: 'Missing required fields',
+        missingFields
       });
     }
-  }
-);
 
+    // Check for existing undertaking - modified to be more specific
+    const existing = await Undertaking.findOne({ 
+      Obj_id: req.body.obj_id,
+      studentID: req.body.studentID,
+    });
+    
+    if (existing) {
+      await cleanupFiles(req.files);
+      return res.status(409).json({ // 409 Conflict is more appropriate
+        error: 'Only one undertaking per semester allowed',
+        details: {
+          existingSubmission: {
+            date: existing.createdAt,
+            semester: existing.semester
+          }
+        }
+      });
+    }
+
+    // Rest of your submission logic...
+       // Create and save the undertaking
+       const undertaking = new Undertaking({
+        Obj_id: req.body.obj_id, // Ensure obj_id is stored
+        studentName: req.body.studentName,
+        semester: req.body.semester,
+        branch: req.body.branch,
+        rollNo: req.body.rollNo,
+        studentID:req.body.studentID,
+        parentName: req.body.parentName,
+        placesVisited: req.body.placesVisited,
+        tourPeriod: req.body.tourPeriod,
+        facultyDetails: req.body.facultyDetails,
+        studentSignature: req.files.studentSignature?.[0]?.filename 
+          ? `/uploads/student-signatures/${req.files.studentSignature[0].filename}`
+          : null,
+        parentSignature: req.files.parentSignature?.[0]?.filename
+          ? `/uploads/parent-signatures/${req.files.parentSignature[0].filename}`
+          : null
+      });
+  
+
+    await undertaking.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Undertaking submitted successfully',
+      data: undertaking
+    });
+
+  } catch (error) {
+    console.error('Error submitting undertaking:', error);
+    await cleanupFiles(req.files);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+router.get('/undertaking/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('Fetching undertaking with identifier:', id);
+
+    // Create a query that checks both _id and Obj_id
+    const query = {
+      $or: [
+        { _id: id },
+        { Obj_id: id }
+      ]
+    };
+    
+    const undertaking = await Undertaking.findOne(query);
+    if (!undertaking) {
+      return res.status(404).json({
+        error: 'Undertaking not found'
+      });
+    }
+    res.json({
+      success: true,
+      data: undertaking
+    });
+  } catch (error) {
+    console.error('Error fetching undertaking:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+router.put('/undertaking/:id', uploadSignatures, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = {
+      $or: [
+        { _id: id },
+        { Obj_id: id }
+      ]
+    };
+    const undertaking = await Undertaking.findOne(query);
+    if (!undertaking) {
+      await cleanupFiles(req.files);
+      return res.status(404).json({
+        error: 'Undertaking not found'
+      });
+    }
+
+    // Update fields
+    const updatableFields = [
+      'studentName', 'semester', 'branch', 'rollNo','studentID',
+      'parentName', 'placesVisited', 'tourPeriod', 'facultyDetails'
+    ];
+    
+    updatableFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        undertaking[field] = req.body[field];
+      }
+    });
+
+    // Update signatures if new ones are provided
+    if (req.files?.studentSignature?.[0]?.filename) {
+      // Delete old signature file if exists
+      if (undertaking.studentSignature) {
+        await deleteFile(undertaking.studentSignature);
+      }
+      undertaking.studentSignature = `/uploads/student-signatures/${req.files.studentSignature[0].filename}`;
+    }
+
+    if (req.files?.parentSignature?.[0]?.filename) {
+      // Delete old signature file if exists
+      if (undertaking.parentSignature) {
+        await deleteFile(undertaking.parentSignature);
+      }
+      undertaking.parentSignature = `/uploads/parent-signatures/${req.files.parentSignature[0].filename}`;
+    }
+
+    await undertaking.save();
+
+    res.json({
+      success: true,
+      message: 'Undertaking updated successfully',
+      data: undertaking
+    });
+
+  } catch (error) {
+    console.error('Error updating undertaking:', error);
+    await cleanupFiles(req.files);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+
+
+router.delete('/undertaking/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find the undertaking document
+    const undertaking = await Undertaking.findOneAndDelete({
+      $or: [
+        { _id: id },
+        { Obj_id: id }
+      ]
+    });
+
+    if (!undertaking) {
+      return res.status(404).json({
+        error: 'Undertaking not found'
+      });
+    }
+
+    // Prepare files for deletion
+    const filesToDelete = [];
+    
+    if (undertaking.studentSignature) {
+      const filename = undertaking.studentSignature.split('/').pop();
+      filesToDelete.push({
+        path: path.join(__dirname, '../uploads/student-signatures', filename),
+        url: undertaking.studentSignature
+      });
+    }
+    
+    if (undertaking.parentSignature) {
+      const filename = undertaking.parentSignature.split('/').pop();
+      filesToDelete.push({
+        path: path.join(__dirname, '../uploads/parent-signatures', filename),
+        url: undertaking.parentSignature
+      });
+    }
+
+    // Convert fs.unlink to promise for easier use with async/await
+    const unlinkFile = (filePath) => {
+      return new Promise((resolve, reject) => {
+        fs.unlink(filePath, (err) => {
+          if (err) {
+            if (err.code === 'ENOENT') {
+              console.log(`File not found (already deleted?): ${filePath}`);
+              resolve({ success: true, warning: 'File not found' });
+            } else {
+              console.error(`Error deleting file ${filePath}:`, err);
+              reject(err);
+            }
+          } else {
+            console.log(`Successfully deleted file: ${filePath}`);
+            resolve({ success: true });
+          }
+        });
+      });
+    };
+
+    // Delete files
+    const deletionResults = await Promise.allSettled(
+      filesToDelete.map(file => unlinkFile(file.path))
+    );
+
+    // Check for failures
+    const failedDeletions = deletionResults.filter(r => r.status === 'rejected');
+    if (failedDeletions.length > 0) {
+      console.error('Some files failed to delete:', failedDeletions);
+    }
+
+    res.json({
+      success: true,
+      message: 'Undertaking deleted' + (failedDeletions.length ? ' (some files may remain)' : ''),
+      deletedFiles: filesToDelete.map(f => f.url),
+      warnings: deletionResults
+        .filter(r => r.status === 'fulfilled' && r.value.warning)
+        .map(r => r.value.warning),
+      errors: failedDeletions.map(f => f.reason.message)
+    });
+
+  } catch (error) {
+    console.error('Error deleting undertaking:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+// Updated cleanupFiles function using fs.promises
+async function cleanupFiles(files) {
+  if (!files) return;
+  
+  const fs = require('fs').promises; // Import promises API
+  
+  try {
+    const deletions = [];
+    Object.values(files).forEach(fileArray => {
+      fileArray.forEach(file => {
+        if (file.path) {
+          deletions.push(
+            fs.unlink(file.path).catch(err => console.error('Error deleting file:', err))
+          );
+        }
+      });
+    });
+    
+    await Promise.all(deletions);
+  } catch (error) {
+    console.error('Error in cleanupFiles:', error);
+  }
+}
 module.exports = router;

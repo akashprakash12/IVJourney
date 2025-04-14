@@ -41,6 +41,10 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 // Logo
 import Logo from "./assets/icone.jpg";
 
+// import ResetPassword from "./src/ResetPassword";
+// import ForgotPassword from "./src/Forgotpassword";
+
+
 const RootStack = createNativeStackNavigator();
 const MainStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -227,6 +231,8 @@ function AuthNavigator() {
       <MainStack.Screen name="Gui" component={Guiconponet} />
       <MainStack.Screen name="Login" component={Login} />
       <MainStack.Screen name="Register" component={Register} />
+      {/* <MainStack.Screen name="ForgotPassword" component={ForgotPassword} />
+      <MainStack.Screen name="ResetPassword" component={ResetPassword} /> */}
     </MainStack.Navigator>
   );
 }
