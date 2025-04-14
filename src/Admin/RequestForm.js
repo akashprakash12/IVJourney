@@ -59,7 +59,8 @@ export default function RequestForm({ navigation }) {
         console.error("Error fetching profile:", error);
         setDepartment("N/A");
       } finally {
-        setLoadingProfile(false);
+        setLoading(false);
+
       }
     };
 
@@ -198,17 +199,16 @@ export default function RequestForm({ navigation }) {
   
     
       // Add timeout to the request
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+
   console.log(requestData);
   
-      const response = await axios.post(
-        `http://${IP}:5000/api/submit-request`,
-        requestData,
-        { signal: controller.signal }
-      );
+  const response = await axios.post(
+    `http://${IP}:5000/api/submit-request`,
+    requestData,
+    { timeout: 10000 } // Timeout in milliseconds
+  );
   
-      clearTimeout(timeoutId);
+   
   
       if (response.data && response.data.success) {
         Alert.alert("Success", "Request submitted successfully!");

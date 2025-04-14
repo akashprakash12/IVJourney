@@ -14,6 +14,8 @@ import axios from "axios";
 import { IP } from "@env";
 import * as FileSystem from "expo-file-system";
 import * as Permissions from "expo-permissions";
+import { FormData } from 'formdata-node'; // If using in node
+
 
 import * as IntentLauncher from "expo-intent-launcher";
 

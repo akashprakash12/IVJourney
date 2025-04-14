@@ -4,6 +4,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";
 import { ThemeContext } from "../context/ThemeContext";
 import { IP } from "@env";
+import { URL } from 'whatwg-url';
+
 
 export default function ResetPassword({ navigation, route }) {
   const { theme } = useContext(ThemeContext);

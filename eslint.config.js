@@ -13,10 +13,14 @@ export default [
         requireConfigFile: false,
       },
       globals: {
+        "fetch": true,
         require: "readonly",
         module: "readonly",
         process: "readonly",
+        exports: "readonly",
         console: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
         __dirname: "readonly",
       },
     },
@@ -28,6 +32,7 @@ export default [
       "react/react-in-jsx-scope": "off",
       "react-native/no-inline-styles": "warn",
       "no-unused-vars": "warn",
+      "no-irregular-whitespace": "error"
     },
   },
 ];

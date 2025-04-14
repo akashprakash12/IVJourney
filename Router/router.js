@@ -4,8 +4,6 @@ const mongoose = require("mongoose");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const _secret = process.env.SECRET_KEY;
-const saltRounds = 10;
 const {
   Register,
   Package,
@@ -17,22 +15,30 @@ const {
   VerifiedEmail,
   VerifiedPhone
 } = require("../models/Items");
-const multer = require("multer");
+const twilio = require('twilio');
+const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
 const path = require("path");
 const fs = require("fs");
 const validator = require('validator');
 const IP = process.env.IP;
 const crypto = require('crypto');
-const twilio = require('twilio');
+
 const {sendVerificationEmail } = require('../context/emailverifie');
 const { sendWelcomeEmail, sendPasswordResetEmail} = require('../context/emailService');
-const { uploadStudentRequests, uploadGeneral,uploadSignatures } = require('../context/UploadSignature');
-const { register } = require("module");
+const {
+  uploadSignatures,
+  uploadStudentRequests,
+  uploadGeneral,
+  uploadDirs,
+  deleteFile
+} = require('../context/UploadSignature'); // adjust path as needed
 
-// const uploadDir = path.join(__dirname, "../uploads");
-// if (!fs.existsSync(uploadDir)) {
-//   fs.mkdirSync(uploadDir, { recursive: true });
-// }
+
+const uploadDir = path.join(__dirname, "../uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // // Configure multer storage
 // const storage = multer.diskStorage({
@@ -153,7 +159,7 @@ router.post("/Login", async (req, res) => {
         createdAt: user.createdAt,
       },
     });
-  } catch (_error) {
+  } catch {
     res.status(500).json({ _error: "Internal server error" });
   }
 });
@@ -238,15 +244,15 @@ router.get("/packages", async (_req, res) => {
 router.get("/packages/:packageId", async (req, res) => {
   try {
     const { packageId } = req.params;
-    const package = await Package.findById(packageId);
+    const packageData = await Package.findById(packageId);
 
-    if (!package) {
+    if (!packageData) {
       return res.status(404).json({ error: "Package not found." });
     }
 
-    const imageUrl = package.image ? `http://${IP}:5000/uploads/${package.image}` : null;
+    const imageUrl = packageData.image ? `http://${IP}:5000/uploads/${packageData.image}` : null;
     const formattedPackage = {
-      ...package._doc,
+      ...packageData._doc,
       image: imageUrl,
     };
 
@@ -270,15 +276,15 @@ router.post("/packages/:packageId/feedback", async (req, res) => {
   }
 
   try {
-    const [package, user] = await Promise.all([
+    const [selectedPackage, user] = await Promise.all([
       Package.findById(packageId),
       Register.findById(userId).populate('profile')
     ]);
 
-    if (!package) return res.status(404).json({ error: "Package not found" });
+    if (!selectedPackage) return res.status(404).json({ error: "Package not found" });
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const existingReview = package.reviews.find(r => r.userId.toString() === userId);
+    const existingReview = selectedPackage.reviews.find(r => r.userId.toString() === userId);
     if (existingReview) {
       return res.status(409).json({
         error: "You've already reviewed this package",
@@ -299,9 +305,9 @@ router.post("/packages/:packageId/feedback", async (req, res) => {
       ...(comment && { comment: comment.trim() })
     };
 
-    package.reviews.push(newReview);
-    package.rating = calculateAverageRating(package.reviews);
-    await package.save();
+    selectedPackage.reviews.push(newReview);
+    selectedPackage.rating = calculateAverageRating(selectedPackage.reviews);
+    await selectedPackage.save();
 
     return res.status(201).json({
       success: true,
@@ -388,11 +394,11 @@ function formatReview(review) {
   };
 }
 
-function formatPackage(package) {
+function formatPackage(selectedPackage) {
   return {
-    ...package.toObject(),
-    image: package.image ? `http://${IP}:5000/uploads/${package.image}` : null,
-    reviews: package.reviews.map(formatReview)
+    ...selectedPackage.toObject(),
+    image: selectedPackage.image ? `http://${IP}:5000/uploads/${selectedPackage.image}` : null,
+    reviews: selectedPackage.reviews.map(formatReview)
   };
 }
 
@@ -410,15 +416,15 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    const package = await Package.findById(packageId);
-    if (!package) {
+    const packageData = await Package.findById(packageId);
+    if (!packageData) {
       return res.status(404).json({ 
         error: "Package not found",
         code: "PACKAGE_NOT_FOUND"
       });
     }
 
-    const reviewIndex = package.reviews.findIndex(
+    const reviewIndex = packageData.reviews.findIndex(
       r => r._id.toString() === reviewId && r.userId.toString() === userId
     );
 
@@ -429,19 +435,19 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    package.reviews[reviewIndex].rating = rating;
-    package.reviews[reviewIndex].comment = comment;
-    package.reviews[reviewIndex].name = name || package.reviews[reviewIndex].name;
-    package.reviews[reviewIndex].date = new Date();
+    packageData.reviews[reviewIndex].rating = rating;
+    packageData.reviews[reviewIndex].comment = comment;
+    packageData.reviews[reviewIndex].name = name || packageData.reviews[reviewIndex].name;
+    packageData.reviews[reviewIndex].date = new Date();
 
-    package.rating = calculateAverageRating(package.reviews);
+    packageData.rating = calculateAverageRating(packageData.reviews);
 
-    await package.save();
+    await packageData.save();
 
     res.status(200).json({
       success: true,
       message: "Review updated successfully",
-      package: formatPackage(package)
+      package: formatPackage(packageData)
     });
 
   } catch (error) {
@@ -465,15 +471,15 @@ router.delete("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    const package = await Package.findById(packageId);
-    if (!package) {
+    const packageData = await Package.findById(packageId);
+    if (!packageData) {
       return res.status(404).json({ 
         error: "Package not found",
         code: "PACKAGE_NOT_FOUND"
       });
     }
 
-    const reviewIndex = package.reviews.findIndex(
+    const reviewIndex = packageData.reviews.findIndex(
       r => r._id.toString() === reviewId && r.userId.toString() === userId
     );
 
@@ -484,18 +490,18 @@ router.delete("/packages/:packageId/feedback/:reviewId", async (req, res) => {
       });
     }
 
-    package.reviews.splice(reviewIndex, 1);
+    packageData.reviews.splice(reviewIndex, 1);
 
-    package.rating = package.reviews.length > 0 
-      ? package.reviews.reduce((sum, r) => sum + r.rating, 0) / package.reviews.length
+    packageData.rating = packageData.reviews.length > 0 
+      ? packageData.reviews.reduce((sum, r) => sum + r.rating, 0) / packageData.reviews.length
       : 0;
 
-    await package.save();
+    await packageData.save();
 
     res.status(200).json({
       success: true,
       message: "Review deleted successfully",
-      package: formatPackage(package)
+      package: formatPackage(packageData)
     });
 
   } catch (error) {
@@ -973,9 +979,7 @@ router.post('/verify-phone', async (req, res) => {
     console.error("Phone verification error:", error);
     res.status(500).json({ 
       error: "Phone verification failed",
-      details: error.message 
-    });
-  }
+      details: error.message });}
 });
 // User Management
 router.get("/api/register", async (req, res) => {

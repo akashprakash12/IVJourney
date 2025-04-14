@@ -16,6 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import axios from 'axios';
 import { IP } from "@env";
+import { FormData } from 'formdata-node'; // If using in node
 import { AuthContext } from "../../context/Authcontext";
 
 export default function UndertakingForm() {

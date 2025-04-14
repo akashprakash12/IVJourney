@@ -5,6 +5,8 @@ import { IP } from "@env";
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
+import { FormData } from 'formdata-node'; // If using in node
+
 
 export default function Studentstatus({ route }) {
   const [undertaking, setUndertaking] = useState(null);
@@ -229,7 +231,7 @@ export default function Studentstatus({ route }) {
     Alert.alert('Success', 'PDF generated and saved successfully');
     } catch (err) {
       console.error('Error generating PDF:', err);
-      alert('Failed to generate PDF');
+    Alert.alert('Failed to generate PDF');
     }
   };
 

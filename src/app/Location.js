@@ -843,15 +843,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
   },
-  poiIcon: {
-    marginRight: 12,
-    fontSize: 16,
-  },
-  poiText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-  },
+  // poiIcon: {
+  //   marginRight: 12,
+  //   fontSize: 16,
+  // },
+  // poiText: {
+  //   fontSize: 14,
+  //   color: '#374151',
+  //   fontWeight: '500',
+  // },
 
   // Action Buttons
   actionsContainer: {

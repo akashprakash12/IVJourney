@@ -128,6 +128,8 @@ export default function PackageDetails() {
   const secondaryTextColor = isDarkMode ? "text-gray-400" : "text-gray-700";
   const highlightColor = isDarkMode ? "text-yellow-400" : "text-yellow-600";
   const cardBg = isDarkMode ? "bg-[#1E1E1E]" : "bg-gray-100";
+  const [hasSubmittedReview, setHasSubmittedReview] = useState(false);
+
 
   const {
     id,
