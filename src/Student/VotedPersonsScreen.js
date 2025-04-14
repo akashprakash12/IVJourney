@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet } from "react-native";
 
 const VotedPersonsScreen = ({ route }) => {
   const { votedUsers } = route.params; // Get the transformed voted users data
+console.log(votedUsers);
 
   return (
     <View style={styles.container}>

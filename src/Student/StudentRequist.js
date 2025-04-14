@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -16,13 +16,18 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import axios from 'axios';
 import { IP } from "@env";
+import { AuthContext } from "../../context/Authcontext";
 
 export default function UndertakingForm() {
+  const { userDetails } = useContext(AuthContext);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [formData, setFormData] = useState({
+    obj_id: userDetails._id,
     studentName: "",
     semester: "",
     branch: "",
     rollNo: "",
+    studentID:"",
     parentName: "",
     placesVisited: "",
     tourPeriod: "",
@@ -33,14 +38,44 @@ export default function UndertakingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Request camera roll permissions on mount
+  // Fetch profile data on component mount
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const response = await axios.get(`http://${IP}:5000/api/getProfile/${userDetails.email}`);
+        const profileData = response.data;
+       
+        
+        setFormData(prev => ({
+          ...prev,
+          studentName: profileData.name || prev.studentName,
+          branch: profileData.branch || prev.branch,
+          semester: profileData.semester || prev.semester,
+          studentID: profileData.studentID || prev.studentID
+        }));
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        Alert.alert(
+          'Info',
+          'Could not load student details. Please enter them manually.',
+          [{ text: 'OK' }]
+        );
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    fetchProfileData();
+  }, );
+
+  // Request camera roll permissions
   useEffect(() => {
     (async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
-          'Permission required', 
-          'We need access to your photos to upload signatures',
+          'Permission Required', 
+          'Need access to your photos for signature uploads',
           [{ text: 'OK' }]
         );
       }
@@ -49,55 +84,57 @@ export default function UndertakingForm() {
 
   const handleInputChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user types
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const pickSignature = async (type) => {
     try {
-      let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'Images', // Simplest working solution
-        allowsEditing: true,
-        aspect: [4, 2],
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets[0].base64) {
-        const base64String = `data:image/jpeg;base64,${result.assets[0].base64}`;
-        if (type === 'student') {
-          setStudentSignature(base64String);
-        } else {
-          setParentSignature(base64String);
+      const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        const { status: newStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (newStatus !== 'granted') {
+          Alert.alert('Permission Denied', 'Cannot access photos without permission');
+          return;
         }
       }
+
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 2],
+        quality: 0.8
+      });
+
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        type === 'student' 
+          ? setStudentSignature(result.assets[0].uri)
+          : setParentSignature(result.assets[0].uri);
+      }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to select image');
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to select image. Please try again.');
     }
   };
 
   const validateForm = () => {
-    let isValid = true;
     const newErrors = {};
+    let isValid = true;
 
-    // Check text fields
+    // Validate text fields
     Object.entries(formData).forEach(([key, value]) => {
-      if (!value) {
+      if (!value && key !== 'obj_id') {
         newErrors[key] = 'This field is required';
         isValid = false;
       }
     });
 
-    // Check signatures
+    // Validate signatures
     if (!studentSignature) {
-      newErrors.studentSignature = 'Student signature is required';
+      newErrors.studentSignature = 'Student signature required';
       isValid = false;
     }
     if (!parentSignature) {
-      newErrors.parentSignature = 'Parent signature is required';
+      newErrors.parentSignature = 'Parent signature required';
       isValid = false;
     }
 
@@ -107,122 +144,203 @@ export default function UndertakingForm() {
 
   const handleSubmit = async () => {
     if (!validateForm()) {
-      Alert.alert('Error', 'Please fill all required fields correctly');
+      Alert.alert('Validation Error', 'Please fill all required fields');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        ...formData,
-        studentSignature,
-        parentSignature
-      };
+      const formDataToSend = new FormData();
+      formDataToSend.append('obj_id', userDetails._id);
+      console.log(formDataToSend);
+      
 
-      // First verify the API endpoint is correct
-      const apiUrl = `http://${IP}:5000/api/undertaking`;
-      console.log("Attempting to submit to:", apiUrl);
-
-      // Test the connection first
-      try {
-        const testResponse = await axios.get(`http://${IP}:5000`);
-        console.log("Server connection test:", testResponse.data);
-      } catch (testError) {
-        console.error("Server connection test failed:", testError);
-        throw new Error("Could not connect to server. Please check your network and server status.");
-      }
-
-      const response = await axios.post(apiUrl, payload, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout: 20000,
+      // Append all form fields
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key !== 'obj_id') formDataToSend.append(key, value);
       });
 
-      Alert.alert(
-        'Success', 
-        'Undertaking submitted successfully!',
-        [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              // Reset form
-              setFormData({
-                studentName: "",
-                semester: "",
-                branch: "",
-                rollNo: "",
-                parentName: "",
-                placesVisited: "",
-                tourPeriod: "",
-                facultyDetails: ""
-              });
-              setStudentSignature(null);
-              setParentSignature(null);
-              setErrors({});
-            }
-          }
-        ]
+      // Append signatures
+      if (studentSignature) {
+        formDataToSend.append('studentSignature', {
+          uri: studentSignature,
+          name: `student_${Date.now()}.jpg`,
+          type: 'image/jpeg'
+        });
+      }
+      if (parentSignature) {
+        formDataToSend.append('parentSignature', {
+          uri: parentSignature,
+          name: `parent_${Date.now()}.jpg`,
+          type: 'image/jpeg'
+        });
+      }
+
+      const response = await axios.post(
+        `http://${IP}:5000/api/undertaking`,
+        formDataToSend,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
       );
+
+      Alert.alert('Success', 'Undertaking submitted successfully!', [{
+        text: 'OK',
+        onPress: () => {
+          setFormData({
+            obj_id: userDetails._id,
+            studentName: "",
+            semester: "",
+            branch: "",
+            rollNo: "",
+            studentID:"",
+            parentName: "",
+            placesVisited: "",
+            tourPeriod: "",
+            facultyDetails: ""
+          });
+          setStudentSignature(null);
+          setParentSignature(null);
+          setErrors({});
+        }
+      }]);
 
     } catch (error) {
       console.error('Submission error:', error);
-      
-      let errorMessage = 'An error occurred while submitting';
+      let message = 'Submission failed';
       if (error.response) {
-        errorMessage = error.response.data?.message || 
-                     `Server responded with ${error.response.status}`;
+        if (error.response.status === 409) {
+          const existingDate = error.response.data.details?.existingSubmission?.date;
+          message = `Already submitted on ${new Date(existingDate).toLocaleDateString()}`;
+        } else {
+          message = error.response.data?.error || `Server error: ${error.response.status}`;
+        }
       } else if (error.request) {
-        errorMessage = 'No response from server. Check your internet connection and server URL.';
-      } else if (error.message.includes('timeout')) {
-        errorMessage = 'Request timed out. Please try again.';
+        message = 'No server response. Check your connection.';
       } else {
-        errorMessage = error.message || 'Unknown error occurred';
+        message = error.message || 'Unknown error occurred';
       }
-      
-      Alert.alert('Submission Error', errorMessage);
+      Alert.alert('Error', message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (isLoadingProfile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#F22E63" />
+        <Text style={styles.loadingText}>Loading your details...</Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.formContainer}>
-          {/* Form Fields */}
-          {[
-            { label: 'Student Name', key: 'studentName', autoCapitalize: 'words' },
-            { label: 'Semester', key: 'semester', keyboardType: 'numeric' },
-            { label: 'Branch', key: 'branch', autoCapitalize: 'words' },
-            { label: 'Roll No.', key: 'rollNo' },
-            { label: 'Parent\'s Name', key: 'parentName', autoCapitalize: 'words' },
-            { label: 'Places to Visit', key: 'placesVisited' },
-            { label: 'Tour Period', key: 'tourPeriod', placeholder: 'DD/MM/YYYY - DD/MM/YYYY' },
-            { label: 'Accompanying Faculty', key: 'facultyDetails' },
-          ].map((field) => (
-            <View key={field.key} style={styles.inputGroup}>
-              <Text style={styles.label}>{field.label}</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  errors[field.key] && styles.inputError
-                ]}
-                value={formData[field.key]}
-                onChangeText={(text) => handleInputChange(field.key, text)}
-                placeholder={field.placeholder || `Enter ${field.label}`}
-                autoCapitalize={field.autoCapitalize || 'none'}
-                keyboardType={field.keyboardType || 'default'}
-              />
-              {errors[field.key] && (
-                <Text style={styles.errorText}>{errors[field.key]}</Text>
-              )}
-            </View>
-          ))}
+          {/* Auto-populated Fields (read-only) */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Student Name</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.studentName}
+              onChangeText={(text) => handleInputChange('studentName', text)}
+              editable={!formData.studentName}
+              placeholder="Loading..."
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Branch</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.branch}
+              onChangeText={(text) => handleInputChange('branch', text)}
+              
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Semester</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.semester}
+              onChangeText={(text) => handleInputChange('semester', text)}
+              keyboardType="numeric"
+             
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Roll No.</Text>
+            <TextInput
+              style={styles.input}
+              
+              onChangeText={(text) => handleInputChange('rollNo', text)}
+            
+            />
+          </View>
+           
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>studentID</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.studentID}
+              onChangeText={(text) => handleInputChange('studentID', text)}
+              editable={!formData.rollNo}
+              placeholder="Loading..."
+            />
+          </View>
+
+          {/* Manually entered fields */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Parent's Name</Text>
+            <TextInput
+              style={[styles.input, errors.parentName && styles.inputError]}
+              value={formData.parentName}
+              onChangeText={(text) => handleInputChange('parentName', text)}
+              placeholder="Enter parent's name"
+              autoCapitalize="words"
+            />
+            {errors.parentName && <Text style={styles.errorText}>{errors.parentName}</Text>}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Places to Visit</Text>
+            <TextInput
+              style={[styles.input, errors.placesVisited && styles.inputError]}
+              value={formData.placesVisited}
+              onChangeText={(text) => handleInputChange('placesVisited', text)}
+              placeholder="Enter places to visit"
+            />
+            {errors.placesVisited && <Text style={styles.errorText}>{errors.placesVisited}</Text>}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Tour Period</Text>
+            <TextInput
+              style={[styles.input, errors.tourPeriod && styles.inputError]}
+              value={formData.tourPeriod}
+              onChangeText={(text) => handleInputChange('tourPeriod', text)}
+              placeholder="DD/MM/YYYY - DD/MM/YYYY"
+            />
+            {errors.tourPeriod && <Text style={styles.errorText}>{errors.tourPeriod}</Text>}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Accompanying Faculty</Text>
+            <TextInput
+              style={[styles.input, errors.facultyDetails && styles.inputError]}
+              value={formData.facultyDetails}
+              onChangeText={(text) => handleInputChange('facultyDetails', text)}
+              placeholder="Enter faculty details"
+            />
+            {errors.facultyDetails && <Text style={styles.errorText}>{errors.facultyDetails}</Text>}
+          </View>
 
           {/* Signature Uploads */}
           <View style={styles.signatureSection}>
@@ -235,14 +353,9 @@ export default function UndertakingForm() {
                 {studentSignature ? 'Change Signature' : 'Upload Signature'}
               </Text>
             </TouchableOpacity>
-            {errors.studentSignature && (
-              <Text style={styles.errorText}>{errors.studentSignature}</Text>
-            )}
+            {errors.studentSignature && <Text style={styles.errorText}>{errors.studentSignature}</Text>}
             {studentSignature && (
-              <Image 
-                source={{ uri: studentSignature }} 
-                style={styles.signaturePreview} 
-              />
+              <Image source={{ uri: studentSignature }} style={styles.signaturePreview} />
             )}
           </View>
 
@@ -256,30 +369,19 @@ export default function UndertakingForm() {
                 {parentSignature ? 'Change Signature' : 'Upload Signature'}
               </Text>
             </TouchableOpacity>
-            {errors.parentSignature && (
-              <Text style={styles.errorText}>{errors.parentSignature}</Text>
-            )}
+            {errors.parentSignature && <Text style={styles.errorText}>{errors.parentSignature}</Text>}
             {parentSignature && (
-              <Image 
-                source={{ uri: parentSignature }} 
-                style={styles.signaturePreview} 
-              />
+              <Image source={{ uri: parentSignature }} style={styles.signaturePreview} />
             )}
           </View>
 
           {/* Submit Button */}
           <TouchableOpacity
-            style={[
-              styles.submitButton,
-              isSubmitting && styles.submitButtonDisabled
-            ]}
+            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             disabled={isSubmitting}
           >
-            <LinearGradient
-              colors={["#FF6480", "#F22E63"]}
-              style={styles.gradient}
-            >
+            <LinearGradient colors={["#FF6480", "#F22E63"]} style={styles.gradient}>
               {isSubmitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -297,6 +399,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  loadingText: {
+    marginTop: 20,
+    fontSize: 16,
+    color: '#333'
   },
   scrollContainer: {
     flexGrow: 1,

@@ -74,5 +74,289 @@
     "inclusions": "Hotel stay, breakfast, transport, cultural shows",
     "instructions": "Carry light clothing, ID proof, and cash for shopping",
     "image": "base64_encoded_image_string"
-  }
+  },
+  
+    {
+      "packageName": "Golden Triangle Tour",
+      "description": "Delhi, Agra, Jaipur - India's classic heritage circuit",
+      "duration": "5 Nights / 6 Days",
+      "price": 12500,
+      "rating": 4.9,
+      "activities": [
+        "Day 1: Arrival in Delhi - Red Fort & Chandni Chowk exploration",
+        "Day 2: Delhi sightseeing - Qutub Minar, India Gate, Lotus Temple",
+        "Day 3: Drive to Agra - Sunrise at Taj Mahal, Agra Fort visit",
+        "Day 4: Fatehpur Sikri enroute to Jaipur - Evening markets",
+        "Day 5: Jaipur - Amber Fort, City Palace, Hawa Mahal",
+        "Day 6: Jantar Mantar visit before departure"
+      ],
+      "inclusions": "5-star hotels, breakfast buffet, AC transport, expert guide, monument entries",
+      "instructions": "Carry comfortable shoes, camera, valid ID proofs. Dress modestly for monuments.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Kerala Backwaters",
+      "description": "Alleppey, Munnar, Thekkady - God's Own Country",
+      "duration": "6 Nights / 7 Days",
+      "price": 15800,
+      "rating": 4.8,
+      "activities": [
+        "Day 1: Kochi arrival - Fort Kochi & Chinese fishing nets",
+        "Day 2: Drive to Munnar - Tea plantation tour",
+        "Day 3: Munnar - Eravikulam National Park, Mattupetty Dam",
+        "Day 4: Thekkady - Spice plantation, Periyar lake cruise",
+        "Day 5: Alleppey - Houseboat check-in, backwater cruise",
+        "Day 6: Alleppey - Village walk, canoe ride",
+        "Day 7: Departure from Kochi"
+      ],
+      "inclusions": "Premium houseboat, resort stays, all meals on houseboat, Ayurvedic welcome kit",
+      "instructions": "Pack light cotton clothes, mosquito repellent. Bring swimwear for resort pools.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Ladakh Adventure",
+      "description": "Leh, Nubra Valley, Pangong Lake - Land of high passes",
+      "duration": "7 Nights / 8 Days",
+      "price": 22000,
+      "rating": 4.7,
+      "activities": [
+        "Day 1: Leh arrival - Acclimatization day",
+        "Day 2: Leh - Shanti Stupa, Leh Palace, local market",
+        "Day 3: Nubra Valley - Khardung La pass, double-humped camels",
+        "Day 4: Nubra - Diskit Monastery, sand dunes",
+        "Day 5: Pangong Lake - Chang La pass, overnight at lakeside",
+        "Day 6: Leh return - Hemis Monastery visit",
+        "Day 7: Leh - Thiksey Monastery, Shey Palace",
+        "Day 8: Departure"
+      ],
+      "inclusions": "Homestays & camps, oxygen cylinders, Ladakhi guide, all permits",
+      "instructions": "Carry warm layers (even in summer), sunglasses, altitude medication if required.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Andaman Tropical Escape",
+      "description": "Port Blair, Havelock, Neil Island - Coral paradise",
+      "duration": "5 Nights / 6 Days",
+      "price": 18500,
+      "rating": 4.6,
+      "activities": [
+        "Day 1: Port Blair - Cellular Jail light & sound show",
+        "Day 2: Havelock - Radhanagar Beach sunset",
+        "Day 3: Havelock - Elephant Beach snorkeling",
+        "Day 4: Neil Island - Natural bridge, Bharatpur Beach",
+        "Day 5: Port Blair - Ross Island, Chidiya Tapu",
+        "Day 6: Departure with shopping time"
+      ],
+      "inclusions": "Beach resorts, speedboat transfers, snorkeling gear, buffet breakfasts",
+      "instructions": "Essential: Swimwear, waterproof phone case, reef-safe sunscreen.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Rajasthan Royalty",
+      "description": "Jaipur, Udaipur, Jodhpur - Land of kings",
+      "duration": "8 Nights / 9 Days",
+      "price": 24500,
+      "rating": 4.9,
+      "activities": [
+        "Day 1: Jaipur - Amber Fort elephant ride",
+        "Day 2: Jaipur - City Palace, Jantar Mantar",
+        "Day 3: Bikaner - Junagarh Fort, camel research center",
+        "Day 4: Jaisalmer - Golden Fort, desert camp",
+        "Day 5: Jaisalmer - Sam sand dunes safari",
+        "Day 6: Jodhpur - Mehrangarh Fort, blue city walk",
+        "Day 7: Udaipur - City Palace boat ride",
+        "Day 8: Udaipur - Sajjangarh sunset",
+        "Day 9: Departure"
+      ],
+      "inclusions": "Heritage hotels, folk performances, desert camp dinner, private guides",
+      "instructions": "Evenings can be cool - carry light jacket. Bargain in markets.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Himalayan Trek (Valley of Flowers)",
+      "description": "Govindghat, Ghangaria - Alpine meadow wonderland",
+      "duration": "6 Nights / 7 Days",
+      "rating": 4.8,
+      "price": 12800,
+      "activities": [
+        "Day 1: Haridwar - Ganga aarti",
+        "Day 2: Joshimath - Acclimatization walk",
+        "Day 3: Ghangaria trek (14km)",
+        "Day 4: Valley of Flowers exploration",
+        "Day 5: Hemkund Sahib visit",
+        "Day 6: Return trek",
+        "Day 7: Departure"
+      ],
+      "inclusions": "Trek permits, certified guide, camping equipment, vegetarian meals",
+      "instructions": "Must have trekking shoes. Carry rain gear. Physical fitness required.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Goa Beach Hopping",
+      "description": "North & South Goa - Sun, sand and seafood",
+      "duration": "4 Nights / 5 Days",
+      "price": 11500,
+      "rating": 4.5,
+      "activities": [
+        "Day 1: North Goa - Baga beach, night market",
+        "Day 2: Central Goa - Old Goa churches, spice plantation",
+        "Day 3: South Goa - Palolem beach, dolphin spotting",
+        "Day 4: Optional activities - Water sports/ayurveda",
+        "Day 5: Departure"
+      ],
+      "inclusions": "Beachfront cottages, bike rental, seafood dinner, airport transfers",
+      "instructions": "Carry beach essentials, Euros accepted in some shops.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Varanasi Spiritual",
+      "description": "Ghats, Sarnath - Mystical Ganga experience",
+      "duration": "3 Nights / 4 Days",
+      "price": 8200,
+      "rating": 4.7,
+      "activities": [
+        "Day 1: Evening Ganga aarti",
+        "Day 2: Sunrise boat ride, temple circuit",
+        "Day 3: Sarnath Buddhist sites",
+        "Day 4: Departure with silk shopping"
+      ],
+      "inclusions": "Boutique ghat hotel, boat rides, guide, all rituals participation",
+      "instructions": "Remove shoes at temples. No photography during ceremonies.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "North East Explorer",
+      "description": "Shillong, Cherrapunji, Kaziranga - Unexplored beauty",
+      "duration": "8 Nights / 9 Days",
+      "price": 24500,
+      "rating": 4.6,
+      "activities": [
+        "Day 1: Guwahati - Kamakhya Temple",
+        "Day 2: Shillong - Local markets",
+        "Day 3: Cherrapunji - Living root bridges trek",
+        "Day 4: Mawlynnong - Asia's cleanest village",
+        "Day 5: Kaziranga - Jeep safari",
+        "Day 6: Kaziranga - Elephant safari",
+        "Day 7: Majuli - River island culture",
+        "Day 8: Return to Guwahati",
+        "Day 9: Departure"
+      ],
+      "inclusions": "Eco lodges, tribal meals, permits, expert naturalists",
+      "instructions": "Carry rain gear year-round. Respect tribal customs.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Mysore & Coorg",
+      "description": "Heritage & coffee plantations - Karnataka gems",
+      "duration": "5 Nights / 6 Days",
+      "price": 14200,
+      "rating": 4.5,
+      "activities": [
+        "Day 1: Bangalore - Tipu's Summer Palace",
+        "Day 2: Mysore - Palace illumination",
+        "Day 3: Coorg - Coffee estate tour",
+        "Day 4: Coorg - Abbey Falls, Tibetan settlement",
+        "Day 5: Nagarhole - Wildlife safari",
+        "Day 6: Departure"
+      ],
+      "inclusions": "Plantation stays, breakfast, cultural shows, entry fees",
+      "instructions": "Light woolens for Coorg evenings. Try local coffee.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Sikkim & Darjeeling",
+      "description": "Tea gardens & Himalayan views - Queen of Hills",
+      "duration": "6 Nights / 7 Days",
+      "price": 17500,
+      "rating": 4.7,
+      "activities": [
+        "Day 1: Bagdogra - Transfer to Darjeeling",
+        "Day 2: Darjeeling - Toy train, tea estate",
+        "Day 3: Gangtok - Rumtek Monastery",
+        "Day 4: Tsomgo Lake day trip",
+        "Day 5: Pelling - Skywalk & waterfalls",
+        "Day 6: Return to Bagdogra",
+        "Day 7: Departure"
+      ],
+      "inclusions": "Boutique hotels, permit fees, guide, all transfers",
+      "instructions": "Carry warm clothes. Limited ATMs - carry cash.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Madhya Pradesh Wildlife",
+      "description": "Bandhavgarh, Kanha, Pench - Tiger territory",
+      "duration": "7 Nights / 8 Days",
+      "price": 21000,
+      "rating": 4.8,
+      "activities": [
+        "Day 1: Jabalpur - Transfer to Bandhavgarh",
+        "Day 2: Bandhavgarh - Morning & evening safaris",
+        "Day 3: Kanha - Safari & tribal village",
+        "Day 4: Kanha - Nature walk",
+        "Day 5: Pench - Jungle safari",
+        "Day 6: Pench - Bird watching",
+        "Day 7: Return to Nagpur",
+        "Day 8: Departure"
+      ],
+      "inclusions": "Jungle lodges, expert trackers, all safaris, conservation fees",
+      "instructions": "Wear earth-toned clothes. No perfumes. Maintain silence.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Tamil Nadu Temple Trail",
+      "description": "Madurai, Thanjavur, Mahabalipuram - Architectural marvels",
+      "duration": "6 Nights / 7 Days",
+      "price": 13800,
+      "rating": 4.6,
+      "activities": [
+        "Day 1: Chennai - Kapaleeshwarar Temple",
+        "Day 2: Mahabalipuram - Shore Temple",
+        "Day 3: Pondicherry - French Quarter",
+        "Day 4: Thanjavur - Brihadeeswara Temple",
+        "Day 5: Madurai - Meenakshi Temple",
+        "Day 6: Rameswaram - Pilgrimage sites",
+        "Day 7: Departure"
+      ],
+      "inclusions": "Temple stays available, traditional meals, guide",
+      "instructions": "Dress conservatively. Remove leather items before temples.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Gujarat Cultural",
+      "description": "Ahmedabad, Dwarka, Rann of Kutch - Vibrant Gujarat",
+      "duration": "7 Nights / 8 Days",
+      "price": 16200,
+      "rating": 4.7,
+      "activities": [
+        "Day 1: Ahmedabad - Heritage walk",
+        "Day 2: Modhera - Sun Temple",
+        "Day 3: Dwarka - Temple darshan",
+        "Day 4: Somnath - Jyotirlinga",
+        "Day 5: Bhuj - Local crafts",
+        "Day 6: Rann Utsav (seasonal)",
+        "Day 7: Return to Ahmedabad",
+        "Day 8: Departure"
+      ],
+      "inclusions": "Cultural performances, handicraft demos, local transport",
+      "instructions": "Check festival dates. Carry white clothes for Rann.",
+      "image": "base64_encoded_image_string"
+    },
+    {
+      "packageName": "Punjab Heritage",
+      "description": "Amritsar, Chandigarh - Land of gurus & warriors",
+      "duration": "4 Nights / 5 Days",
+      "price": 9500,
+      "rating": 4.5,
+      "activities": [
+        "Day 1: Amritsar - Golden Temple",
+        "Day 2: Wagah Border ceremony",
+        "Day 3: Jallianwala Bagh",
+        "Day 4: Chandigarh - Rock Garden",
+        "Day 5: Departure"
+      ],
+      "inclusions": "Gurudwara stay option, langar meal, all entry fees",
+      "instructions": "Cover head in Golden Temple. Arrive early for Wagah.",
+      "image": "base64_encoded_image_string"
+    }
+  
 ]

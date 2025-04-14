@@ -20,110 +20,60 @@ const {
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const { v4: uuidv4 } = require('uuid');
-const { sendWelcomeEmail } = require("../context/emailService");
-// At the top of your router.js or server file
-const dns = require('dns');
 const validator = require('validator');
-const { sendVerificationEmail } = require("../context/emailverifie");
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
-const client = require('twilio')(accountSid, authToken); 
-const {  uploadSignatures, 
-  uploadStudentRequests,
-  uploadGeneral } = require('../context/UploadSignature');
 const IP = process.env.IP;
+const crypto = require('crypto');
+const twilio = require('twilio');
+const {sendVerificationEmail } = require('../context/emailverifie');
+const { sendWelcomeEmail, sendPasswordResetEmail} = require('../context/emailService');
+const { uploadStudentRequests, uploadGeneral,uploadSignatures } = require('../context/UploadSignature');
+const { register } = require("module");
 
-
-
-// // Configure upload directories
 // const uploadDir = path.join(__dirname, "../uploads");
-// const studentSigDir = path.join(uploadDir, "student-signatures");
-// const parentSigDir = path.join(uploadDir, "parent-signatures");
+// if (!fs.existsSync(uploadDir)) {
+//   fs.mkdirSync(uploadDir, { recursive: true });
+// }
 
-// // Create directories if they don't exist
-// [uploadDir, studentSigDir, parentSigDir].forEach(dir => {
-//   if (!fs.existsSync(dir)) {
-//     fs.mkdirSync(dir, { recursive: true });
-//   }
-// });
-
-// // Configure Multer storage for general uploads
+// // Configure multer storage
 // const storage = multer.diskStorage({
 //   destination: (req, file, cb) => {
 //     cb(null, uploadDir);
 //   },
 //   filename: (req, file, cb) => {
-//     const ext = path.extname(file.originalname);
-//     cb(null, `${uuidv4()}${ext}`);
-//   }
-// });
+//     const filePath = path.join(uploadDir, file.originalname);
 
-// // Configure Multer storage for signatures
-// const signatureStorage = multer.diskStorage({
-//   destination: (req, file, cb) => {
-//     let folder = '';
-//     if (file.fieldname === 'studentSignature') {
-//       folder = 'student-signatures';
-//     } else if (file.fieldname === 'parentSignature') {
-//       folder = 'parent-signatures';
+//     // ✅ Check if the file already exists
+//     if (fs.existsSync(filePath)) {
+//       console.log("File already exists, reusing:", file.originalname);
+//       cb(null, file.originalname); // Use the existing filename
+//     } else {
+//       console.log("Saving new file:", file.originalname);
+//       cb(null, file.originalname); // Save with original filename (no timestamp)
 //     }
-//     cb(null, path.join(uploadDir, folder));
 //   },
-//   filename: (req, file, cb) => {
-//     const ext = path.extname(file.originalname);
-//     cb(null, `${uuidv4()}${ext}`);
-//   }
 // });
 
-// // File filter for images only
-// const fileFilter = (req, file, cb) => {
-//   if (file.mimetype.startsWith('image/')) {
-//     cb(null, true);
-//   } else {
-//     cb(new Error('Only image files are allowed!'), false);
-//   }
+// const upload = multer({ storage });
+
+// Add this to your backend utility functions
+// const cleanupFiles = (files) => {
+//   if (!files) return;
+  
+//   const filePaths = Object.values(files).flat().map(file => file.path);
+//   const fs = require('fs');
+//   const path = require('path');
+  
+//   filePaths.forEach(filePath => {
+//     try {
+//       if (fs.existsSync(filePath)) {
+//         fs.unlinkSync(filePath);
+//       }
+//     } catch (err) {
+//       console.error('Error deleting file:', filePath, err);
+//     }
+//   });
 // };
 
-// Initialize Multer instances
-// const upload = multer({ storage });
-// const uploadSignatures = multer({ 
-//   storage: signatureStorage,
-//   fileFilter,
-//   limits: {
-//     fileSize: 5 * 1024 * 1024 // 5MB limit
-//   }
-// });
-
-// Helper functions
-function calculateAverageRating(reviews) {
-  return reviews.length 
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
-    : 0;
-}
-
-function formatReview(review) {
-  return {
-    ...review,
-    user: {
-      ...review.user,
-      profileImage: review.user.profileImage
-        ? `http://${IP}:5000${review.user.profileImage}`
-        : null
-    }
-  };
-}
-
-function formatPackage(package) {
-  return {
-    ...package.toObject(),
-    image: package.image ? `http://${IP}:5000/uploads/${package.image}` : null,
-    reviews: package.reviews.map(formatReview)
-  };
-}
-
-// Routes
 router.get("/", (req, res) => {
   res.send("Welcome to the IVJourney API!");
 });
@@ -338,12 +288,12 @@ router.post("/packages/:packageId/feedback", async (req, res) => {
 
     const newReview = {
       userId: user._id,
-      fullName: name || user.fullName,
+      name: name || user.name,
       rating: Number(rating),
       date: new Date(),
       user: {
         _id: user._id,
-        fullName: name || user.fullName,
+        name: name || user.name,
         profileImage: user.profile?.profileImage || null
       },
       ...(comment && { comment: comment.trim() })
@@ -368,6 +318,86 @@ router.post("/packages/:packageId/feedback", async (req, res) => {
   }
 });
 
+   
+//forgot-password
+// router.post('/forgot-password', async (req, res) => {
+// // Top of file with other imports
+
+// // Add this route with other auth routes (after /Login)
+// router.post('/forgot-password', async (req, res) => {
+//   try {
+//     const { email } = req.body;
+
+//     if (!email) {
+//       return res.status(400).json({ error: "Email is required" });
+//     }
+
+//     const user = await Register.findOne({ email });
+//     if (!user) {
+//       return res.status(404).json({ error: "User with this email does not exist" });
+//     }
+
+//     // Generate reset token
+//     const resetToken = crypto.randomBytes(20).toString('hex');
+    
+//     // Set token and expiration (1 hour)
+//     user.resetPasswordToken = resetToken;
+//     user.resetPasswordExpires = Date.now() + 3600000;
+//     await user.save();
+
+//     // Create reset URL
+//     const resetUrl = `http://${IP}:3000/reset-password/${resetToken}`;
+
+//     // Send email
+//     await sendEmail({
+//       to: user.email,
+//       subject: 'Password Reset Request - IVJourney',
+//       text: `You requested a password reset. Click this link to continue: ${resetUrl}\n\nIf you didn't make this request, please ignore this email.`
+//     });
+
+//     res.status(200).json({ 
+//       success: true,
+//       message: "Password reset instructions sent to your email"
+//     });
+
+//   } catch (error) {
+//     console.error("Forgot Password Error:", error);
+//     res.status(500).json({
+//       error: "Internal server error",
+//       code: "PASSWORD_RESET_ERROR"
+//     });
+//   }
+// });
+// });
+// Helper functions
+function calculateAverageRating(reviews) {
+  return reviews.length 
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+    : 0;
+}
+
+function formatReview(review) {
+  return {
+    ...review,
+    user: {
+      ...review.user,
+      profileImage: review.user.profileImage
+        ? `http://${IP}:5000${review.user.profileImage}`
+        : null
+    }
+  };
+}
+
+function formatPackage(package) {
+  return {
+    ...package.toObject(),
+    image: package.image ? `http://${IP}:5000/uploads/${package.image}` : null,
+    reviews: package.reviews.map(formatReview)
+  };
+}
+
+
+// Update feedback for a package
 router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
   try {
     const { packageId, reviewId } = req.params;
@@ -401,7 +431,7 @@ router.put("/packages/:packageId/feedback/:reviewId", async (req, res) => {
 
     package.reviews[reviewIndex].rating = rating;
     package.reviews[reviewIndex].comment = comment;
-    package.reviews[reviewIndex].fullName = name || package.reviews[reviewIndex].fullName;
+    package.reviews[reviewIndex].name = name || package.reviews[reviewIndex].name;
     package.reviews[reviewIndex].date = new Date();
 
     package.rating = calculateAverageRating(package.reviews);
@@ -509,6 +539,7 @@ router.post("/packages/vote", async (req, res) => {
   }
 });
 
+// User Registration
 // User Registration
 router.post("/register", async (req, res) => {
   try {
@@ -811,7 +842,7 @@ router.post('/send-phone-verification', async (req, res) => {
     const { phone } = req.body;
     const normalizedPhone = phone.replace(/\D/g, '');
 
-    // Validate phone number
+    // Validate phone number (assume 10-digit format for now)
     if (!/^\d{10}$/.test(normalizedPhone)) {
       return res.status(400).json({ 
         error: "Invalid phone number",
@@ -828,6 +859,15 @@ router.post('/send-phone-verification', async (req, res) => {
       });
     }
 
+    // Rate limiting (Optional: Adjust based on needs)
+    const lastRequest = await TempVerification.findOne({ phone: normalizedPhone });
+    if (lastRequest && new Date() - lastRequest.updatedAt < 60000) { // 1-minute cooldown
+      return res.status(429).json({
+        error: "Too many requests",
+        details: "Please wait a minute before requesting a new code."
+      });
+    }
+
     // Generate verification code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
@@ -836,23 +876,18 @@ router.post('/send-phone-verification', async (req, res) => {
     await TempVerification.updateOne(
       { phone: normalizedPhone },
       {
-        $set: {
-          phone: normalizedPhone,
-          code,
-          expiresAt,
-          attempts: 0
-        },
+        $set: { phone: normalizedPhone, code, expiresAt, attempts: 0 },
         $unset: { email: "" }
       },
       { upsert: true }
     );
 
-    // Send SMS in production
+    // Send SMS only in production
     if (process.env.NODE_ENV === 'production') {
       try {
         const message = await client.messages.create({
           body: `Your verification code is: ${code}`,
-          from: twilioPhone,
+          from: process.env.TWILIO_PHONE_NUMBER,
           to: `+91${normalizedPhone}`
         });
         console.log('SMS sent:', message.sid);
@@ -881,8 +916,9 @@ router.post('/send-phone-verification', async (req, res) => {
   }
 });
 
+
 // Verify phone code
-// Verify Phone Code
+
 router.post('/verify-phone', async (req, res) => {
   try {
     const { phone, code } = req.body;
@@ -938,11 +974,9 @@ router.post('/verify-phone', async (req, res) => {
     res.status(500).json({ 
       error: "Phone verification failed",
       details: error.message 
-    });
-  }
+    });
+  }
 });
-
-
 // User Management
 router.get("/api/register", async (req, res) => {
   try {
@@ -1136,7 +1170,7 @@ router.post("/submit-request", async (req, res) => {
 // });
 router.get("/requests/students", async (req, res) => {
   try {
-    const studentRequests = await Request.find().populate("Obj_id", "email fullName");
+    const studentRequests = await Request.find().populate("Obj_id", "email name");
     res.status(200).json(studentRequests);
   } catch (error) {
     console.error("Error fetching student requests:", error);
@@ -1376,7 +1410,7 @@ router.get("/votes-details", async (req, res) => {
       .populate({
         path: "studentId",
         model: "Register",
-        select: "fullName gender studentID",
+        select: "name gender studentID",
       })
       .lean();
 
@@ -1411,21 +1445,17 @@ router.get("/votes-details", async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 });
-
-// Undertaking Form Submission with Multer
-
-
-// Submit new undertaking
 router.post('/undertaking', uploadSignatures, async (req, res) => {
   try {
     // Validate required fields
     console.log('Body:', req.body);
-  console.log('Files:', req.files);
+    console.log('Files:', req.files);
+
     const requiredFields = [
-      'studentName', 'semester', 'branch', 'rollNo','studentID',
+      'studentName', 'semester', 'branch', 'rollNo', 'studentID',
       'parentName', 'placesVisited', 'tourPeriod', 'facultyDetails'
     ];
-    
+
     const missingFields = requiredFields.filter(field => !req.body[field]);
     if (missingFields.length > 0) {
       await cleanupFiles(req.files);
@@ -1699,4 +1729,108 @@ async function cleanupFiles(files) {
     console.error('Error in cleanupFiles:', error);
   }
 }
+module.exports = router;
+
+// Backend API Endpoint (Express.js example)
+// Forgot Password Route
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Find user by email
+    const user = await Register.findOne({ email });
+    if (!user) {
+      return res.status(200).json({ 
+        success: true,
+        message: "If this email exists, a reset link will be sent" 
+      });
+    }
+
+    // Generate and save reset token
+    const token = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    // Send email
+    const resetLink = `ivjourney://reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    await sendPasswordResetEmail(email, user.name, resetLink);
+
+    res.json({ 
+      success: true,
+      message: "Password reset link sent to your email",
+      token
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Internal server error" 
+    });
+  }
+});
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, email, newPassword } = req.body;
+    
+    if (!token || !email || !newPassword) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Token, email and new password are required" 
+      });
+    }
+
+    // Basic password validation
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long"
+      });
+    }
+
+    // Find user with valid token
+    const user = await Register.findOne({ 
+      email: email.toLowerCase(),
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid or expired password reset token" 
+      });
+    }
+
+    // Check if new password is different from old one
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current password"
+      });
+    }
+
+    // Update password and clear reset token
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    // Optionally: Send confirmation email
+    // sendPasswordChangedEmail(user.email, user.fullName);
+
+    return res.json({ 
+      success: true,
+      message: "Password updated successfully" 
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res.status(500).json({ 
+      success: false,
+      message: "Internal server error" 
+    });
+  }
+});
+// Export the router
 module.exports = router;

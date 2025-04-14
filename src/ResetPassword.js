@@ -14,13 +14,14 @@ export default function ResetPassword({ navigation, route }) {
   const [token, setToken] = useState(route.params?.token || "");
   const [email, setEmail] = useState(route.params?.email || "");
 
+  // Handle deep linking
   useEffect(() => {
     const handleDeepLink = (event) => {
       if (event.url) {
         const url = new URL(event.url);
-        const urlToken = url.searchParams.get("token");
-        const urlEmail = url.searchParams.get("email");
-
+        const urlToken = url.searchParams.get('token');
+        const urlEmail = url.searchParams.get('email');
+        
         if (urlToken && urlEmail) {
           setToken(urlToken);
           setEmail(decodeURIComponent(urlEmail));
@@ -28,16 +29,21 @@ export default function ResetPassword({ navigation, route }) {
       }
     };
 
-    Linking.getInitialURL().then((url) => {
+    // Get initial URL if app was launched from a deep link
+    Linking.getInitialURL().then(url => {
       if (url) handleDeepLink({ url });
     });
 
-    const subscription = Linking.addEventListener("url", handleDeepLink);
+    // Subscribe to URL events
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Cleanup function
     return () => {
-      subscription.remove();
+      subscription.remove(); // Changed from Linking.removeEventListener
     };
   }, []);
 
+  // Add password validation function
   const validatePassword = (password) => {
     if (password.length < 8) {
       return "Password must be at least 8 characters long";
@@ -45,6 +51,7 @@ export default function ResetPassword({ navigation, route }) {
     return null;
   };
 
+  // Update handleResetPassword function
   const handleResetPassword = async () => {
     if (!password || !confirmPassword) {
       Alert.alert("Error", "Please fill all fields");
@@ -74,7 +81,7 @@ export default function ResetPassword({ navigation, route }) {
         { token, email, newPassword: password },
         {
           headers: { "Content-Type": "application/json" },
-          timeout: 10000,
+          timeout: 10000
         }
       );
 
@@ -125,7 +132,10 @@ export default function ResetPassword({ navigation, route }) {
         }`}
       />
 
-      <TouchableOpacity onPress={handleResetPassword} disabled={loading}>
+      <TouchableOpacity 
+        onPress={handleResetPassword}
+        disabled={loading}
+      >
         <LinearGradient
           colors={["#FF6480", "#F22E63"]}
           className="p-4 rounded-lg items-center"

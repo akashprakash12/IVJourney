@@ -12,14 +12,13 @@ import axios from "axios";
 import { Eye, EyeOff } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import SvgImage from "../assets/image1.svg";
-import { ThemeContext } from "../context/ThemeContext"; // Import theme context
-import { IP,API_BASE_URL } from "@env";
+import { ThemeContext } from "../context/ThemeContext";
+import { IP, API_BASE_URL } from "@env";
 import { AuthContext } from "../context/Authcontext";
-
 
 export default function Login({ navigation }) {
   const { theme } = useContext(ThemeContext);
-  const isDarkMode = theme === "dark"; // Determine current mode
+  const isDarkMode = theme === "dark";
   const { login } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,16 +34,13 @@ export default function Login({ navigation }) {
       const response = await axios.post(
         `http://${IP}:5000/api/Login`,
         { email, password },
-        { headers: { "Content-Type": "application/json" } } // Ensure JSON format
+        { headers: { "Content-Type": "application/json" } }
       );
 
       Alert.alert("Login Successful", response.data.message);
-   
       const { token, role, userDetails } = response.data;
-      
-       login(role, token,userDetails);
-  
-       // Navigate to Home after login
+      login(role, token, userDetails);
+     
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Login failed";
       Alert.alert("Login Failed", errorMessage);
@@ -97,18 +93,18 @@ export default function Login({ navigation }) {
           </View>
         </View>
 
+        {/* Updated Forgot Password Button */}
         <TouchableOpacity
           className="self-end mr-2 mt-2"
-          onPress={() => Alert.alert("Forgot Password", "Reset link sent to your email.")}
+          onPress={() => navigation.navigate("ForgotPassword")}
         >
           <Text className="text-pink-500">Forgot Password?</Text>
         </TouchableOpacity>
 
-        {/* Fix: Moved onPress to TouchableOpacity */}
         <View className="items-center">
           <TouchableOpacity 
             className="w-3/4 mt-5 rounded-full overflow-hidden" 
-            onPress={handleLogin} // Fixed placement
+            onPress={handleLogin}
           >
             <LinearGradient
               colors={["#FF6480", "#F22E63"]}

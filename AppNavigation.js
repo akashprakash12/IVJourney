@@ -16,8 +16,11 @@ import { useNavigation } from "@react-navigation/native";
 
 // Screens
 import Login from "./src/Login";
+import ForgotPassword from "./src/ForgotPassword";
 import Register from "./src/Register";
-import Bookmark from "./src/app/Bookmark";
+import ResetPassword from "./src/ResetPassword";
+
+
 import Profile from "./src/app/Profile";
 import Status from "./src/app/Status";
 import Location from "./src/app/Location";
@@ -31,6 +34,7 @@ import RequestForm from "./src/Admin/RequestForm";
 import PDFPreview from "./src/HOD/RequestApprove";
 import StudentRequist from "./src/Student/StudentRequist";
 import VotedPersonsScreen from "./src/Student/VotedPersonsScreen";
+import Studentstatus from "./src/Student/Studentstatus";
 
 
 // Icons
@@ -215,11 +219,18 @@ function MainNavigator() {
         component={RequestForm} 
         options={{ headerShown: true }}
       />
+      
       <MainStack.Screen 
         name="Approveform" 
         component={PDFPreview} 
         options={{ headerShown: true }}
       />
+      <MainStack.Screen 
+        name="StudnetStatus" 
+        component={Studentstatus} 
+        options={{ headerShown: true }}
+      />
+      
     </MainStack.Navigator>
   );
 }
@@ -231,8 +242,8 @@ function AuthNavigator() {
       <MainStack.Screen name="Gui" component={Guiconponet} />
       <MainStack.Screen name="Login" component={Login} />
       <MainStack.Screen name="Register" component={Register} />
-      {/* <MainStack.Screen name="ForgotPassword" component={ForgotPassword} />
-      <MainStack.Screen name="ResetPassword" component={ResetPassword} /> */}
+      <MainStack.Screen name="ForgotPassword" component={ForgotPassword} />
+      <MainStack.Screen name="ResetPassword" component={ResetPassword} />
     </MainStack.Navigator>
   );
 }

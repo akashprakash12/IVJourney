@@ -3,11 +3,6 @@ const nodemailer = require('nodemailer');
 // Public URL to your hosted image
 const INDUSTRIAL_IMAGE_URL = 'https://images.unsplash.com/photo-1502791451862-7bd8c1df43a7?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
-// Ensure environment variables are set
-if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS || !process.env.EMAIL_FROM) {
-  throw new Error('Missing required environment variables for email service.');
-}
-
 // Create Nodemailer transporter
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -107,7 +102,7 @@ const sendPasswordResetEmail = async (email, name, resetLink) => {
             This link will expire in 1 hour for security reasons.
           </p>
         </div>
-      `,
+      `
     };
 
     const info = await transporter.sendMail(mailOptions);
