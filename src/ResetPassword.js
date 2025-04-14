@@ -4,8 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";
 import { ThemeContext } from "../context/ThemeContext";
 import { IP } from "@env";
-import { URL } from 'whatwg-url';
-
+import queryString from 'query-string';
 
 export default function ResetPassword({ navigation, route }) {
   const { theme } = useContext(ThemeContext);
@@ -19,17 +18,17 @@ export default function ResetPassword({ navigation, route }) {
   // Handle deep linking
   useEffect(() => {
     const handleDeepLink = (event) => {
-      if (event.url) {
-        const url = new URL(event.url);
-        const urlToken = url.searchParams.get('token');
-        const urlEmail = url.searchParams.get('email');
-        
-        if (urlToken && urlEmail) {
-          setToken(urlToken);
-          setEmail(decodeURIComponent(urlEmail));
-        }
+      const url = event.url;
+      const parsed = queryString.parseUrl(url);
+      const tokenParam = parsed.query.token;
+      const emailParam = parsed.query.email;
+    
+      if (tokenParam && emailParam) {
+        setToken(tokenParam);
+        setEmail(decodeURIComponent(emailParam));
       }
     };
+    
 
     // Get initial URL if app was launched from a deep link
     Linking.getInitialURL().then(url => {

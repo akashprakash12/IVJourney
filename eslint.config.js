@@ -13,6 +13,7 @@ export default [
         requireConfigFile: false,
       },
       globals: {
+        FormData: "readonly",
         "fetch": true,
         require: "readonly",
         module: "readonly",
