@@ -281,7 +281,7 @@ export default function Register({ navigation }) {
       };
 
       const response = await axios.post(
-        `https://ivjourney-production.up.railway.app/api/register`,
+        `http://${IP}:5000/api/register`,
         userData,
         { headers: { "Content-Type": "application/json" } }
       );

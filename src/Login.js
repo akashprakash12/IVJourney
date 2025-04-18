@@ -32,7 +32,7 @@ export default function Login({ navigation }) {
 
     try {
       const response = await axios.post(
-        `https://ivjourney-production.up.railway.app/api/Login`,
+        `http://${IP}/api/Login`,
         { email, password },
         { headers: { "Content-Type": "application/json" } }
       );
